@@ -1,21 +1,61 @@
 {
-    "name": "BizFlow - Small Business Manager",
+    "name": "BizFlow - Business Manager",
     "short_name": "BizFlow",
-    "description": "Multi-tenant business management system",
+    "description": "Complete multi-tenant business management system with POS, inventory, customers, and real-time analytics",
     "start_url": "/login.php",
+    "scope": "/",
     "display": "standalone",
     "orientation": "any",
     "background_color": "#0a0e1a",
     "theme_color": "#3b82f6",
+    "categories": ["business", "productivity", "finance"],
+    "lang": "en",
+    "dir": "ltr",
     "icons": [
         {
-            "src": "https://api.dicebear.com/7.x/icons/svg?seed=BizFlow&backgroundColor=3b82f6&size=192",
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=72",
+            "sizes": "72x72",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=96",
+            "sizes": "96x96",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=128",
+            "sizes": "128x128",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=144",
+            "sizes": "144x144",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=152",
+            "sizes": "152x152",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=192",
             "sizes": "192x192",
             "type": "image/svg+xml",
             "purpose": "any maskable"
         },
         {
-            "src": "https://api.dicebear.com/7.x/icons/svg?seed=BizFlow&backgroundColor=3b82f6&size=512",
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=384",
+            "sizes": "384x384",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6,60a5fa&size=512",
             "sizes": "512x512",
             "type": "image/svg+xml",
             "purpose": "any maskable"
@@ -24,13 +64,56 @@
     "shortcuts": [
         {
             "name": "POS Terminal",
+            "short_name": "POS",
+            "description": "Open POS terminal for sales",
             "url": "/pos.php",
-            "icons": [{ "src": "https://api.dicebear.com/7.x/icons/svg?seed=cart", "sizes": "192x192" }]
+            "icons": [
+                {
+                    "src": "https://api.dicebear.com/7.x/icons/svg?seed=cart&backgroundColor=10b981&size=96",
+                    "sizes": "96x96",
+                    "type": "image/svg+xml"
+                }
+            ]
         },
         {
             "name": "Admin Dashboard",
+            "short_name": "Admin",
+            "description": "Open admin panel",
             "url": "/admin.php",
-            "icons": [{ "src": "https://api.dicebear.com/7.x/icons/svg?seed=admin", "sizes": "192x192" }]
+            "icons": [
+                {
+                    "src": "https://api.dicebear.com/7.x/icons/svg?seed=admin&backgroundColor=a855f7&size=96",
+                    "sizes": "96x96",
+                    "type": "image/svg+xml"
+                }
+            ]
+        },
+        {
+            "name": "Add Product",
+            "short_name": "New Product",
+            "description": "Quickly add a new product",
+            "url": "/admin.php?tab=products",
+            "icons": [
+                {
+                    "src": "https://api.dicebear.com/7.x/icons/svg?seed=add&backgroundColor=fbbf24&size=96",
+                    "sizes": "96x96",
+                    "type": "image/svg+xml"
+                }
+            ]
         }
-    ]
+    ],
+    "screenshots": [
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=screenshot1&size=1080",
+            "sizes": "1080x1920",
+            "type": "image/svg+xml",
+            "form_factor": "narrow",
+            "label": "Dashboard view"
+        }
+    ],
+    "prefer_related_applications": false,
+    "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+    "edge_side_panel": {
+        "preferred_width": 480
+    }
 }
