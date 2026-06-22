@@ -1,8 +1,7 @@
 <?php
+header('Content-Type: application/json');
 session_start();
 require_once 'db.php';
-
-header('Content-Type: application/json');
 
 requireLogin();
 
@@ -14,7 +13,7 @@ $action = $input['action'] ?? '';
 
 if ($action === 'create_sale') {
     $items = $input['items'] ?? [];
-    $customerId = intval($input['customer_id'] ?? 0) ?: null;
+    $customerId = !empty($input['customer_id']) ? intval($input['customer_id']) : null;
     $paymentMethod = $input['payment_method'] ?? 'cash';
     $paidAmount = floatval($input['paid_amount'] ?? 0);
     $changeAmount = floatval($input['change_amount'] ?? 0);
@@ -28,24 +27,40 @@ if ($action === 'create_sale') {
     $conn->begin_transaction();
     
     try {
-        // Calculate
+        // Calculate subtotal
         $subtotal = 0;
         foreach ($items as $item) {
             $subtotal += floatval($item['price']) * intval($item['qty']);
         }
         
-        $settings = $conn->query("SELECT * FROM business_settings WHERE business_id = $bid")->fetch_assoc();
+        // Get tax settings
+        $settingsQuery = $conn->query("SELECT * FROM business_settings WHERE business_id = $bid");
+        $settings = $settingsQuery->fetch_assoc();
         $taxAmount = ($settings['tax_enabled'] ?? 0) ? ($subtotal * floatval($settings['tax_rate']) / 100) : 0;
         
-        // Generate invoice number
+        // Generate invoice
         $invoiceNumber = generateInvoiceNumber();
         
-        // Create sale
+        // ✅ Create sale (10 params, 10 type chars)
         $stmt = $conn->prepare("
-            INSERT INTO sales (business_id, customer_id, user_id, invoice_number, subtotal, tax_amount, total_amount, paid_amount, change_amount, payment_method, status, created_at)
+            INSERT INTO sales 
+            (business_id, customer_id, user_id, invoice_number, subtotal, tax_amount, total_amount, paid_amount, change_amount, payment_method, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', NOW())
         ");
-        $stmt->bind_param("iiisddddds", $bid, $customerId, $uid, $invoiceNumber, $subtotal, $taxAmount, $total, $paidAmount, $changeAmount, $paymentMethod);
+        
+        // 10 params: i,i,i,s,d,d,d,d,d,s
+        $stmt->bind_param("iiisdddddds",
+            $bid,            // i
+            $customerId,     // i (can be null)
+            $uid,            // i
+            $invoiceNumber,  // s
+            $subtotal,       // d
+            $taxAmount,      // d
+            $total,          // d
+            $paidAmount,     // d
+            $changeAmount,   // d
+            $paymentMethod   // s
+        );
         $stmt->execute();
         $saleId = $conn->insert_id;
         
@@ -57,15 +72,37 @@ if ($action === 'create_sale') {
             $itemTotal = $price * $qty;
             
             // Get product info
-            $prod = $conn->query("SELECT name, sku, cost_price FROM products WHERE id = $productId AND business_id = $bid")->fetch_assoc();
-            $profit = ($price - $prod['cost_price']) * $qty;
+            $prodQuery = $conn->prepare("SELECT name, sku, cost_price FROM products WHERE id = ? AND business_id = ?");
+            $prodQuery->bind_param("ii", $productId, $bid);
+            $prodQuery->execute();
+            $prod = $prodQuery->get_result()->fetch_assoc();
             
-            // Add to sale_items
+            if (!$prod) continue;
+            
+            $prodName = $prod['name'];
+            $prodSku = $prod['sku'] ?? '';
+            $prodCost = floatval($prod['cost_price']);
+            $profit = ($price - $prodCost) * $qty;
+            
+            // ✅ Insert sale item (9 params, 9 type chars)
             $stmt = $conn->prepare("
-                INSERT INTO sale_items (sale_id, product_id, product_name, product_sku, quantity, unit_price, cost_price, total, profit)
+                INSERT INTO sale_items 
+                (sale_id, product_id, product_name, product_sku, quantity, unit_price, cost_price, total, profit)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->bind_param("iissiddd", $saleId, $productId, $prod['name'], $prod['sku'], $qty, $price, $prod['cost_price'], $itemTotal, $profit);
+            
+            // 9 params: i,i,s,s,i,d,d,d,d
+            $stmt->bind_param("iissidddd",
+                $saleId,
+                $productId,
+                $prodName,
+                $prodSku,
+                $qty,
+                $price,
+                $prodCost,
+                $itemTotal,
+                $profit
+            );
             $stmt->execute();
             
             // Reduce stock
@@ -77,37 +114,46 @@ if ($action === 'create_sale') {
         
         // Update customer stats
         if ($customerId) {
-            $conn->query("
+            $stmt = $conn->prepare("
                 UPDATE customers 
                 SET total_purchases = total_purchases + 1, 
-                    total_spent = total_spent + $total,
+                    total_spent = total_spent + ?,
                     last_purchase_date = NOW()
-                WHERE id = $customerId AND business_id = $bid
+                WHERE id = ? AND business_id = ?
             ");
+            $stmt->bind_param("dii", $total, $customerId, $bid);
+            $stmt->execute();
             
-            // Add loyalty points (1 point per currency unit)
+            // Loyalty points (1 per currency unit)
             $points = intval($total);
             if ($points > 0) {
-                $conn->query("UPDATE customers SET loyalty_points = loyalty_points + $points WHERE id = $customerId");
-                $conn->query("
-                    INSERT INTO loyalty_transactions (business_id, customer_id, sale_id, points, type, description) 
-                    VALUES ($bid, $customerId, $saleId, $points, 'earned', 'Purchase')
+                $stmt = $conn->prepare("UPDATE customers SET loyalty_points = loyalty_points + ? WHERE id = ?");
+                $stmt->bind_param("ii", $points, $customerId);
+                $stmt->execute();
+                
+                $stmt = $conn->prepare("
+                    INSERT INTO loyalty_transactions 
+                    (business_id, customer_id, sale_id, points, type, description) 
+                    VALUES (?, ?, ?, ?, 'earned', 'Purchase')
                 ");
+                $stmt->bind_param("iiii", $bid, $customerId, $saleId, $points);
+                $stmt->execute();
             }
         }
         
         $conn->commit();
         
         // Audit log
-        auditLog('create_sale', 'sale', $saleId, "Sale: $total");
+        @auditLog('create_sale', 'sale', $saleId, "Sale: $invoiceNumber - $total");
         
         // Real-time notification
-        pushRealTime('sales', 'new-sale', [
+        @pushRealTime('sales', 'new-sale', [
             'sale_id' => $saleId,
             'invoice' => $invoiceNumber,
             'amount' => $total,
             'cashier' => $_SESSION['user_name'],
-            'items_count' => count($items)
+            'items_count' => count($items),
+            'currency' => 'DT'
         ]);
         
         echo json_encode([
@@ -119,7 +165,11 @@ if ($action === 'create_sale') {
         
     } catch (Exception $e) {
         $conn->rollback();
-        echo json_encode(['success' => false, 'message' => 'Failed: ' . $e->getMessage()]);
+        error_log("Sale error: " . $e->getMessage());
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Failed: ' . $e->getMessage()
+        ]);
     }
     
     exit;
