@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Offline - BizFlow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0e1a, #1a1f33);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .box {
+            text-align: center;
+            max-width: 420px;
+            background: rgba(255,255,255,0.05);
+            padding: 50px 40px;
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+        p {
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        button {
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(59,130,246,0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(59,130,246,0.5);
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px 16px;
+            background: rgba(239,68,68,0.15);
+            color: #fca5a5;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="icon">📡</div>
+        <h1>You're Offline</h1>
+        <p>BizFlow needs internet to access your business data. Check your connection and try again.</p>
+        <button onclick="location.reload()">🔄 Reconnect</button>
+        <div class="status" id="status">⚠️ No connection</div>
+    </div>
+    <script>
+        // Auto-reload when online
+        window.addEventListener('online', () => {
+            document.getElementById('status').innerHTML = '✅ Reconnecting...';
+            document.getElementById('status').style.background = 'rgba(16,185,129,0.15)';
+            document.getElementById('status').style.color = '#86efac';
+            setTimeout(() => location.reload(), 1000);
+        });
+        
+        // Check connection every 5 seconds
+        setInterval(() => {
+            fetch('/login.php', { method: 'HEAD', cache: 'no-store' })
+                .then(() => location.reload())
+                .catch(() => {});
+        }, 5000);
+    </script>
+</body>
+</html>
