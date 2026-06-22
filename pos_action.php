@@ -13,7 +13,7 @@ $action = $input['action'] ?? '';
 
 if ($action === 'create_sale') {
     $items = $input['items'] ?? [];
-    $customerId = !empty($input['customer_id']) ? intval($input['customer_id']) : null;
+    $customerId = !empty($input['customer_id']) ? intval($input['customer_id']) : 0;
     $paymentMethod = $input['payment_method'] ?? 'cash';
     $paidAmount = floatval($input['paid_amount'] ?? 0);
     $changeAmount = floatval($input['change_amount'] ?? 0);
@@ -41,27 +41,20 @@ if ($action === 'create_sale') {
         // Generate invoice
         $invoiceNumber = generateInvoiceNumber();
         
-        // ✅ Create sale (10 params, 10 type chars)
-        $stmt = $conn->prepare("
-            INSERT INTO sales 
-            (business_id, customer_id, user_id, invoice_number, subtotal, tax_amount, total_amount, paid_amount, change_amount, payment_method, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', NOW())
-        ");
+        // ✅ Use direct SQL with escaping (simpler than bind_param for mixed null)
+        $custIdSql = $customerId > 0 ? $customerId : 'NULL';
+        $invoiceSafe = $conn->real_escape_string($invoiceNumber);
+        $paymentSafe = $conn->real_escape_string($paymentMethod);
         
-        // 10 params: i,i,i,s,d,d,d,d,d,s
-        $stmt->bind_param("iiisddddds",
-            $bid,            // i
-            $customerId,     // i (can be null)
-            $uid,            // i
-            $invoiceNumber,  // s
-            $subtotal,       // d
-            $taxAmount,      // d
-            $total,          // d
-            $paidAmount,     // d
-            $changeAmount,   // d
-            $paymentMethod   // s
-        );
-        $stmt->execute();
+        $sql = "INSERT INTO sales 
+            (business_id, customer_id, user_id, invoice_number, subtotal, tax_amount, total_amount, paid_amount, change_amount, payment_method, status, created_at)
+            VALUES 
+            ($bid, $custIdSql, $uid, '$invoiceSafe', $subtotal, $taxAmount, $total, $paidAmount, $changeAmount, '$paymentSafe', 'completed', NOW())";
+        
+        if (!$conn->query($sql)) {
+            throw new Exception("Failed to create sale: " . $conn->error);
+        }
+        
         $saleId = $conn->insert_id;
         
         // Add items + reduce stock
@@ -72,38 +65,25 @@ if ($action === 'create_sale') {
             $itemTotal = $price * $qty;
             
             // Get product info
-            $prodQuery = $conn->prepare("SELECT name, sku, cost_price FROM products WHERE id = ? AND business_id = ?");
-            $prodQuery->bind_param("ii", $productId, $bid);
-            $prodQuery->execute();
-            $prod = $prodQuery->get_result()->fetch_assoc();
+            $prodResult = $conn->query("SELECT name, sku, cost_price FROM products WHERE id = $productId AND business_id = $bid");
+            $prod = $prodResult->fetch_assoc();
             
             if (!$prod) continue;
             
-            $prodName = $prod['name'];
-            $prodSku = $prod['sku'] ?? '';
+            $prodName = $conn->real_escape_string($prod['name']);
+            $prodSku = $conn->real_escape_string($prod['sku'] ?? '');
             $prodCost = floatval($prod['cost_price']);
             $profit = ($price - $prodCost) * $qty;
             
-            // ✅ Insert sale item (9 params, 9 type chars)
-            $stmt = $conn->prepare("
-                INSERT INTO sale_items 
+            // Insert sale item with direct SQL
+            $sqlItem = "INSERT INTO sale_items 
                 (sale_id, product_id, product_name, product_sku, quantity, unit_price, cost_price, total, profit)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
+                VALUES 
+                ($saleId, $productId, '$prodName', '$prodSku', $qty, $price, $prodCost, $itemTotal, $profit)";
             
-            // 9 params: i,i,s,s,i,d,d,d,d
-            $stmt->bind_param("iissidddd",
-                $saleId,
-                $productId,
-                $prodName,
-                $prodSku,
-                $qty,
-                $price,
-                $prodCost,
-                $itemTotal,
-                $profit
-            );
-            $stmt->execute();
+            if (!$conn->query($sqlItem)) {
+                throw new Exception("Failed to add item: " . $conn->error);
+            }
             
             // Reduce stock
             updateStock($productId, $qty, 'out', "Sale #$invoiceNumber", 'sale', $saleId);
@@ -113,47 +93,39 @@ if ($action === 'create_sale') {
         }
         
         // Update customer stats
-        if ($customerId) {
-            $stmt = $conn->prepare("
+        if ($customerId > 0) {
+            $conn->query("
                 UPDATE customers 
                 SET total_purchases = total_purchases + 1, 
-                    total_spent = total_spent + ?,
+                    total_spent = total_spent + $total,
                     last_purchase_date = NOW()
-                WHERE id = ? AND business_id = ?
+                WHERE id = $customerId AND business_id = $bid
             ");
-            $stmt->bind_param("dii", $total, $customerId, $bid);
-            $stmt->execute();
             
-            // Loyalty points (1 per currency unit)
+            // Loyalty points
             $points = intval($total);
             if ($points > 0) {
-                $stmt = $conn->prepare("UPDATE customers SET loyalty_points = loyalty_points + ? WHERE id = ?");
-                $stmt->bind_param("ii", $points, $customerId);
-                $stmt->execute();
-                
-                $stmt = $conn->prepare("
+                $conn->query("UPDATE customers SET loyalty_points = loyalty_points + $points WHERE id = $customerId");
+                $conn->query("
                     INSERT INTO loyalty_transactions 
                     (business_id, customer_id, sale_id, points, type, description) 
-                    VALUES (?, ?, ?, ?, 'earned', 'Purchase')
+                    VALUES ($bid, $customerId, $saleId, $points, 'earned', 'Purchase')
                 ");
-                $stmt->bind_param("iiii", $bid, $customerId, $saleId, $points);
-                $stmt->execute();
             }
         }
         
         $conn->commit();
         
-        // Audit log
-        @auditLog('create_sale', 'sale', $saleId, "Sale: $invoiceNumber - $total");
+        // Audit log (suppress errors)
+        @auditLog('create_sale', 'sale', $saleId, "Sale: $invoiceNumber");
         
-        // Real-time notification
+        // Real-time notification (suppress errors)
         @pushRealTime('sales', 'new-sale', [
             'sale_id' => $saleId,
             'invoice' => $invoiceNumber,
             'amount' => $total,
-            'cashier' => $_SESSION['user_name'],
-            'items_count' => count($items),
-            'currency' => 'DT'
+            'cashier' => $_SESSION['user_name'] ?? 'Cashier',
+            'items_count' => count($items)
         ]);
         
         echo json_encode([
@@ -165,10 +137,9 @@ if ($action === 'create_sale') {
         
     } catch (Exception $e) {
         $conn->rollback();
-        error_log("Sale error: " . $e->getMessage());
         echo json_encode([
             'success' => false, 
-            'message' => 'Failed: ' . $e->getMessage()
+            'message' => $e->getMessage()
         ]);
     }
     
