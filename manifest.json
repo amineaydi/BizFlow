@@ -1,0 +1,36 @@
+{
+    "name": "BizFlow - Small Business Manager",
+    "short_name": "BizFlow",
+    "description": "Multi-tenant business management system",
+    "start_url": "/login.php",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#0a0e1a",
+    "theme_color": "#3b82f6",
+    "icons": [
+        {
+            "src": "https://api.dicebear.com/7.x/icons/svg?seed=BizFlow&backgroundColor=3b82f6&size=192",
+            "sizes": "192x192",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/icons/svg?seed=BizFlow&backgroundColor=3b82f6&size=512",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "POS Terminal",
+            "url": "/pos.php",
+            "icons": [{ "src": "https://api.dicebear.com/7.x/icons/svg?seed=cart", "sizes": "192x192" }]
+        },
+        {
+            "name": "Admin Dashboard",
+            "url": "/admin.php",
+            "icons": [{ "src": "https://api.dicebear.com/7.x/icons/svg?seed=admin", "sizes": "192x192" }]
+        }
+    ]
+}
