@@ -3,7 +3,6 @@ session_start();
 require_once 'db.php';
 require_once 'theme.php';
 
-// ✅ Already logged in? Redirect
 if (isset($_SESSION['user_id'])) {
     $role = $_SESSION['user_role'] ?? '';
     if (in_array($role, ['cashier', 'worker'])) {
@@ -14,73 +13,62 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
-// CSRF token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 $error = '';
-$success = '';
 
-// ========================================
-// 🔐 HANDLE LOGIN
-// ========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // CSRF check
     if (!isset($_POST['csrf']) || $_POST['csrf'] !== $_SESSION['csrf_token']) {
-        $error = "⚠️ Security token invalid. Refresh and try again.";
+        $error = "⚠️ Security token invalid.";
     } else {
-        $loginType = $_POST['login_type'] ?? 'password';
+        $loginType = $_POST['login_type'] ?? 'email';
         
-        // ===== PASSWORD LOGIN (Owner/Manager) =====
-        if ($loginType === 'password') {
-            $businessId = intval($_POST['business_id'] ?? 0);
-            $username = trim($_POST['username'] ?? '');
+        // ===== EMAIL LOGIN (Owners/Managers) =====
+        if ($loginType === 'email') {
+            $email = trim($_POST['email'] ?? '');
             $password = trim($_POST['password'] ?? '');
             
-            if (!$businessId || !$username || !$password) {
+            if (!$email || !$password) {
                 $error = "⚠️ Please fill in all fields.";
             } else {
+                // 🎯 Find user by email (globally unique)
                 $stmt = $conn->prepare("
-                    SELECT u.*, b.name as business_name, b.is_active as biz_active
+                    SELECT u.*, b.name as business_name, b.is_active as biz_active, b.logo_emoji
                     FROM users u
                     JOIN businesses b ON b.id = u.business_id
-                    WHERE u.username = ? AND u.business_id = ? AND u.is_active = 1
+                    WHERE u.email = ? AND u.is_active = 1
                     LIMIT 1
                 ");
-                $stmt->bind_param("si", $username, $businessId);
+                $stmt->bind_param("s", $email);
                 $stmt->execute();
                 $result = $stmt->get_result();
                 
                 if ($user = $result->fetch_assoc()) {
                     
                     if (!$user['biz_active']) {
-                        $error = "🚫 This business is suspended. Contact support.";
+                        $error = "🚫 Your business is suspended.";
                     } else {
-                        // Verify password
                         $isValid = password_verify($password, $user['password']) 
                                 || hash_equals($user['password'], $password);
                         
                         if ($isValid) {
-                            // ✅ Login success!
                             session_regenerate_id(true);
                             
                             $_SESSION['user_id'] = $user['id'];
                             $_SESSION['user_name'] = $user['full_name'];
-                            $_SESSION['user_username'] = $user['username'];
+                            $_SESSION['user_email'] = $user['email'];
                             $_SESSION['user_role'] = $user['role'];
                             $_SESSION['business_id'] = $user['business_id'];
                             $_SESSION['business_name'] = $user['business_name'];
+                            $_SESSION['business_logo'] = $user['logo_emoji'];
                             $_SESSION['login_time'] = time();
                             
-                            // Update last login
                             @$conn->query("UPDATE users SET last_login=NOW() WHERE id=" . intval($user['id']));
+                            auditLog('login', 'user', $user['id'], "Email login: {$user['email']}");
                             
-                            // Audit log
-                            auditLog('login', 'user', $user['id'], "User {$user['username']} logged in");
-                            
-                            // Redirect based on role
                             if (in_array($user['role'], ['cashier', 'worker'])) {
                                 header("Location: pos.php");
                             } else {
@@ -88,16 +76,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                             exit;
                         } else {
-                            $error = "❌ Invalid username or password.";
+                            $error = "❌ Wrong password.";
                         }
                     }
                 } else {
-                    $error = "❌ User not found.";
+                    $error = "❌ Email not found.";
                 }
             }
         }
         
-        // ===== PIN LOGIN (Cashier Quick Access) =====
+        // ===== PIN LOGIN (Quick for cashiers) =====
         else if ($loginType === 'pin') {
             $pin = trim($_POST['pin'] ?? '');
             
@@ -105,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "⚠️ Please enter your PIN.";
             } else {
                 $stmt = $conn->prepare("
-                    SELECT u.*, b.name as business_name, b.is_active as biz_active
+                    SELECT u.*, b.name as business_name, b.is_active as biz_active, b.logo_emoji
                     FROM users u
                     JOIN businesses b ON b.id = u.business_id
                     WHERE u.pin = ? AND u.is_active = 1
@@ -118,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($user = $result->fetch_assoc()) {
                     
                     if (!$user['biz_active']) {
-                        $error = "🚫 This business is suspended.";
+                        $error = "🚫 Business suspended.";
                     } else {
                         session_regenerate_id(true);
                         
@@ -127,12 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['user_role'] = $user['role'];
                         $_SESSION['business_id'] = $user['business_id'];
                         $_SESSION['business_name'] = $user['business_name'];
+                        $_SESSION['business_logo'] = $user['logo_emoji'];
                         $_SESSION['login_time'] = time();
                         
                         @$conn->query("UPDATE users SET last_login=NOW() WHERE id=" . intval($user['id']));
-                        auditLog('login_pin', 'user', $user['id'], "PIN login: {$user['username']}");
+                        auditLog('login_pin', 'user', $user['id'], "PIN login to {$user['business_name']}");
                         
-                        // PIN users always go to POS
                         header("Location: pos.php");
                         exit;
                     }
@@ -143,13 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-// Get list of active businesses for dropdown
-$businesses = [];
-$result = $conn->query("SELECT id, name, logo_emoji FROM businesses WHERE is_active = 1 ORDER BY name");
-while ($row = $result->fetch_assoc()) {
-    $businesses[] = $row;
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -157,7 +138,7 @@ while ($row = $result->fetch_assoc()) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#3b82f6">
-<title>BizFlow · Login</title>
+<title>BizFlow · Sign In</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -178,7 +159,7 @@ body {
 
 .login-wrapper {
     width: 100%;
-    max-width: 460px;
+    max-width: 440px;
 }
 
 .login-card {
@@ -213,7 +194,6 @@ body {
     font-family: 'Playfair Display', serif;
     font-size: 32px;
     font-weight: 700;
-    color: #fff;
     margin-bottom: 4px;
 }
 .logo-text span { 
@@ -222,11 +202,7 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
-.tagline {
-    color: #94a3b8;
-    font-size: 13px;
-    margin-bottom: 30px;
-}
+.tagline { color: #94a3b8; font-size: 13px; margin-bottom: 30px; }
 
 .alert {
     padding: 12px 16px;
@@ -242,11 +218,6 @@ body {
     color: #fca5a5;
     animation: shake 0.4s;
 }
-.alert.success {
-    background: rgba(16,185,129,0.1);
-    border: 1px solid rgba(16,185,129,0.3);
-    color: #86efac;
-}
 
 @keyframes shake {
     0%,100% { transform: translateX(0); }
@@ -254,7 +225,6 @@ body {
     75% { transform: translateX(8px); }
 }
 
-/* Tabs */
 .tabs {
     display: flex;
     gap: 6px;
@@ -282,14 +252,10 @@ body {
     box-shadow: 0 6px 20px rgba(59,130,246,0.3);
 }
 
-/* Form */
 .form-content { display: none; }
 .form-content.active { display: block; }
 
-.form-group {
-    text-align: left;
-    margin-bottom: 16px;
-}
+.form-group { text-align: left; margin-bottom: 16px; }
 
 .form-group label {
     display: block;
@@ -301,9 +267,7 @@ body {
     margin-bottom: 8px;
 }
 
-.input-wrapper {
-    position: relative;
-}
+.input-wrapper { position: relative; }
 
 .input-icon {
     position: absolute;
@@ -314,7 +278,7 @@ body {
     opacity: 0.5;
 }
 
-.form-input, .form-select {
+.form-input {
     width: 100%;
     background: #0a0e1a;
     border: 2px solid rgba(255,255,255,0.06);
@@ -326,22 +290,10 @@ body {
     transition: 0.2s;
 }
 
-.form-input:focus, .form-select:focus {
+.form-input:focus {
     outline: none;
     border-color: #3b82f6;
-}
-
-.form-select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%233b82f6' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
-    padding-right: 40px;
-}
-
-.form-select option {
-    background: #0a0e1a;
-    color: white;
+    background: #0f1424;
 }
 
 .pin-input {
@@ -350,6 +302,7 @@ body {
     letter-spacing: 14px !important;
     padding: 18px 16px !important;
     font-weight: 800 !important;
+    padding-left: 16px !important;
 }
 
 .btn-login {
@@ -389,9 +342,11 @@ body {
 
 .footer-text {
     margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.06);
     font-size: 12px;
     color: #475569;
-    line-height: 1.6;
+    line-height: 1.8;
 }
 
 .footer-text a {
@@ -413,17 +368,6 @@ body {
     margin-top: 15px;
 }
 
-.no-business {
-    background: rgba(251,191,36,0.1);
-    border: 1px solid rgba(251,191,36,0.3);
-    color: #fbbf24;
-    padding: 16px;
-    border-radius: 12px;
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 13px;
-}
-
 @media (max-width: 480px) {
     .login-card { padding: 35px 25px; }
     .logo-text { font-size: 26px; }
@@ -442,48 +386,23 @@ body {
             <div class="alert error"><?= $error ?></div>
         <?php endif; ?>
         
-        <?php if (empty($businesses)): ?>
-            <div class="no-business">
-                ⚠️ No businesses registered yet.<br>
-                <a href="super_login.php" style="color:#fbbf24;text-decoration:underline;">
-                    Platform Admin Login →
-                </a>
-            </div>
-        <?php else: ?>
-        
         <!-- Tabs -->
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('password', this)">🔐 Login</div>
-            <div class="tab" onclick="switchTab('pin', this)">🔢 Quick PIN</div>
+            <div class="tab active" onclick="switchTab('email', this)">📧 Sign In</div>
+            <div class="tab" onclick="switchTab('pin', this)">⚡ Quick PIN</div>
         </div>
         
-        <!-- PASSWORD LOGIN -->
-        <div class="form-content active" id="form-password">
+        <!-- EMAIL LOGIN -->
+        <div class="form-content active" id="form-email">
             <form method="POST">
                 <input type="hidden" name="csrf" value="<?= $_SESSION['csrf_token'] ?>">
-                <input type="hidden" name="login_type" value="password">
+                <input type="hidden" name="login_type" value="email">
                 
                 <div class="form-group">
-                    <label>🏪 Business</label>
+                    <label>📧 Email Address</label>
                     <div class="input-wrapper">
-                        <span class="input-icon">🏪</span>
-                        <select name="business_id" class="form-select" required>
-                            <option value="">Select your business...</option>
-                            <?php foreach ($businesses as $b): ?>
-                                <option value="<?= $b['id'] ?>">
-                                    <?= htmlspecialchars($b['logo_emoji'] ?? '🏪') ?> 
-                                    <?= htmlspecialchars($b['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>👤 Username</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">👤</span>
-                        <input type="text" name="username" class="form-input" placeholder="Enter username" required>
+                        <span class="input-icon">📧</span>
+                        <input type="email" name="email" class="form-input" placeholder="your@email.com" required autofocus autocomplete="email">
                     </div>
                 </div>
                 
@@ -491,8 +410,8 @@ body {
                     <label>🔒 Password</label>
                     <div class="input-wrapper">
                         <span class="input-icon">🔒</span>
-                        <input type="password" name="password" id="passwordInput" class="form-input" placeholder="••••••••" required>
-                        <button type="button" class="toggle-password" onclick="togglePassword()">👁️</button>
+                        <input type="password" name="password" id="passwordInput" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                        <button type="button" class="toggle-password" onclick="togglePassword()" tabindex="-1">👁️</button>
                     </div>
                 </div>
                 
@@ -507,22 +426,20 @@ body {
                 <input type="hidden" name="login_type" value="pin">
                 
                 <div class="form-group">
-                    <label style="text-align:center;">🔢 Enter Your PIN</label>
-                    <input type="password" name="pin" class="form-input pin-input" placeholder="••••" maxlength="10" inputmode="numeric" required autofocus>
+                    <label style="text-align:center;">⚡ Your Personal PIN</label>
+                    <input type="password" name="pin" class="form-input pin-input" placeholder="••••" maxlength="10" inputmode="numeric" required>
                 </div>
                 
                 <button type="submit" class="btn-login">⚡ Quick Login</button>
             </form>
             
             <div style="text-align:center;margin-top:15px;font-size:12px;color:#64748b;">
-                💡 For cashiers - fastest access
+                💡 Fastest access for cashiers
             </div>
         </div>
         
-        <?php endif; ?>
-        
         <div class="footer-text">
-            New business? <a href="register.php">Create Account</a><br>
+            New business? <a href="register.php">Get Started Free</a><br>
             Platform admin? <a href="super_login.php">👑 HQ Login</a>
         </div>
         
@@ -540,9 +457,10 @@ function switchTab(tab, el) {
     document.querySelectorAll('.form-content').forEach(f => f.classList.remove('active'));
     document.getElementById('form-' + tab).classList.add('active');
     
-    // Auto-focus
     if (tab === 'pin') {
         setTimeout(() => document.querySelector('.pin-input').focus(), 100);
+    } else {
+        setTimeout(() => document.querySelector('input[name="email"]').focus(), 100);
     }
 }
 
