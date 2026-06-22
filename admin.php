@@ -1793,6 +1793,6 @@ console.log('🟢 BizFlow Admin Loaded');
 </script>
 
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-
+<script src="pwa.js"></script>
 </body>
 </html>
