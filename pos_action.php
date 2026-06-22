@@ -49,7 +49,7 @@ if ($action === 'create_sale') {
         ");
         
         // 10 params: i,i,i,s,d,d,d,d,d,s
-        $stmt->bind_param("iiisdddddds",
+        $stmt->bind_param("iiisddddds",
             $bid,            // i
             $customerId,     // i (can be null)
             $uid,            // i
