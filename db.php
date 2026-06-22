@@ -1,4 +1,5 @@
 <?php
+// db.php — BizFlow Database Connection
 date_default_timezone_set('Africa/Tunis');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -81,14 +82,12 @@ function getBusinessInfo() {
     $bid = getBusinessId();
     if ($bid <= 0) return null;
     
-    $stmt = $conn->prepare("SELECT * FROM businesses WHERE id = ?");
-    $stmt->bind_param("i", $bid);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
+    $result = $conn->query("SELECT * FROM businesses WHERE id = $bid");
+    return $result->fetch_assoc();
 }
 
 /**
- * ✅ FIXED AUDIT LOG
+ * Audit log
  */
 function auditLog($action, $entityType = null, $entityId = null, $description = '', $oldValues = null, $newValues = null) {
     global $conn;
@@ -99,31 +98,29 @@ function auditLog($action, $entityType = null, $entityId = null, $description = 
     if ($bid <= 0) return;
     
     try {
-        $oldJson = $oldValues ? json_encode($oldValues) : null;
-        $newJson = $newValues ? json_encode($newValues) : null;
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-        $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
-        $entityIdInt = $entityId ? intval($entityId) : null;
+        $actionSafe = $conn->real_escape_string($action);
+        $entityTypeSafe = $entityType ? "'" . $conn->real_escape_string($entityType) . "'" : 'NULL';
+        $entityIdSafe = $entityId ? intval($entityId) : 'NULL';
+        $descSafe = $conn->real_escape_string($description);
+        $oldSafe = $oldValues ? "'" . $conn->real_escape_string(json_encode($oldValues)) . "'" : 'NULL';
+        $newSafe = $newValues ? "'" . $conn->real_escape_string(json_encode($newValues)) . "'" : 'NULL';
+        $ip = $conn->real_escape_string($_SERVER['REMOTE_ADDR'] ?? '');
+        $ua = $conn->real_escape_string(substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255));
         
-        // Use direct query to avoid bind_param issues
-        $stmt = $conn->prepare("
+        @$conn->query("
             INSERT INTO audit_logs 
             (business_id, user_id, action, entity_type, entity_id, description, old_values, new_values, ip_address, user_agent, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES 
+            ($bid, $uid, '$actionSafe', $entityTypeSafe, $entityIdSafe, '$descSafe', $oldSafe, $newSafe, '$ip', '$ua', NOW())
         ");
-        
-        // 10 params: i,i,s,s,i,s,s,s,s,s
-        $stmt->bind_param("iississsss",
-            $bid, $uid, $action, $entityType, $entityIdInt,
-            $description, $oldJson, $newJson, $ip, $ua
-        );
-        @$stmt->execute();
     } catch (Exception $e) {
-        // Silently fail - audit log shouldn't break the app
         error_log("Audit log error: " . $e->getMessage());
     }
 }
 
+/**
+ * Pusher real-time
+ */
 function pushRealTime($channel, $event, $data) {
     $key = getenv('PUSHER_KEY') ?: '692a2afe9b9c204f0136';
     $secret = getenv('PUSHER_SECRET') ?: 'b1352a2ee0523940bfd4';
@@ -169,25 +166,29 @@ function pushRealTime($channel, $event, $data) {
     }
 }
 
+/**
+ * Get current theme
+ */
 function getTheme() {
     global $conn;
     $bid = getBusinessId();
     if ($bid <= 0) return null;
     
-    $stmt = $conn->prepare("SELECT * FROM business_themes WHERE business_id = ?");
-    $stmt->bind_param("i", $bid);
-    $stmt->execute();
-    $theme = $stmt->get_result()->fetch_assoc();
+    $result = $conn->query("SELECT * FROM business_themes WHERE business_id = $bid");
+    $theme = $result->fetch_assoc();
     
     if (!$theme) {
         $conn->query("INSERT INTO business_themes (business_id) VALUES ($bid)");
-        $stmt->execute();
-        $theme = $stmt->get_result()->fetch_assoc();
+        $result = $conn->query("SELECT * FROM business_themes WHERE business_id = $bid");
+        $theme = $result->fetch_assoc();
     }
     
     return $theme;
 }
 
+/**
+ * Format money
+ */
 function formatMoney($amount, $showSymbol = true) {
     $business = getBusinessInfo();
     $symbol = $business['currency_symbol'] ?? 'DT';
@@ -195,20 +196,100 @@ function formatMoney($amount, $showSymbol = true) {
     return $showSymbol ? "$formatted $symbol" : $formatted;
 }
 
+/**
+ * Generate unique invoice number
+ */
 function generateInvoiceNumber() {
     global $conn;
     $bid = getBusinessId();
     
-    $stmt = $conn->prepare("SELECT invoice_prefix, next_invoice_number FROM business_settings WHERE business_id = ?");
-    $stmt->bind_param("i", $bid);
-    $stmt->execute();
-    $settings = $stmt->get_result()->fetch_assoc();
+    $result = $conn->query("SELECT invoice_prefix, next_invoice_number FROM business_settings WHERE business_id = $bid");
+    $settings = $result->fetch_assoc();
+    
+    if (!$settings) {
+        // Create default settings
+        $conn->query("INSERT INTO business_settings (business_id) VALUES ($bid)");
+        $settings = ['invoice_prefix' => 'INV', 'next_invoice_number' => 1];
+    }
     
     $prefix = $settings['invoice_prefix'] ?? 'INV';
-    $number = $settings['next_invoice_number'] ?? 1;
+    $number = intval($settings['next_invoice_number'] ?? 1);
     
+    // Increment for next time
     $conn->query("UPDATE business_settings SET next_invoice_number = next_invoice_number + 1 WHERE business_id = $bid");
     
     return $prefix . '-' . date('Ymd') . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Update product stock + log movement
+ */
+function updateStock($productId, $quantity, $type, $reason = '', $referenceType = null, $referenceId = null) {
+    global $conn;
+    
+    $bid = getBusinessId();
+    $uid = getUserId();
+    $productId = intval($productId);
+    $quantity = intval($quantity);
+    
+    if ($productId <= 0 || $quantity <= 0) {
+        return ['ok' => false, 'message' => 'Invalid input'];
+    }
+    
+    // Get current stock
+    $result = $conn->query("SELECT stock_quantity FROM products WHERE id = $productId AND business_id = $bid");
+    $product = $result->fetch_assoc();
+    
+    if (!$product) {
+        return ['ok' => false, 'message' => 'Product not found'];
+    }
+    
+    $current = intval($product['stock_quantity']);
+    $change = ($type === 'in') ? $quantity : -$quantity;
+    $newStock = $current + $change;
+    
+    if ($newStock < 0) {
+        return ['ok' => false, 'message' => 'Insufficient stock'];
+    }
+    
+    // Update product stock
+    $conn->query("UPDATE products SET stock_quantity = $newStock WHERE id = $productId AND business_id = $bid");
+    
+    // Log stock movement
+    $reasonSafe = $conn->real_escape_string($reason);
+    $refTypeSafe = $referenceType ? "'" . $conn->real_escape_string($referenceType) . "'" : 'NULL';
+    $refIdSafe = $referenceId ? intval($referenceId) : 'NULL';
+    $typeSafe = $conn->real_escape_string($type);
+    
+    @$conn->query("
+        INSERT INTO stock_movements 
+        (business_id, product_id, user_id, type, quantity, quantity_before, quantity_after, reason, reference_type, reference_id, created_at)
+        VALUES 
+        ($bid, $productId, $uid, '$typeSafe', $quantity, $current, $newStock, '$reasonSafe', $refTypeSafe, $refIdSafe, NOW())
+    ");
+    
+    return ['ok' => true, 'new_stock' => $newStock];
+}
+
+/**
+ * Check stock
+ */
+function checkStock($productId, $quantity) {
+    global $conn;
+    $bid = getBusinessId();
+    
+    $result = $conn->query("SELECT stock_quantity, name FROM products WHERE id = " . intval($productId) . " AND business_id = $bid");
+    $product = $result->fetch_assoc();
+    
+    if (!$product) return ['ok' => false, 'message' => 'Product not found'];
+    
+    if ($product['stock_quantity'] < $quantity) {
+        return [
+            'ok' => false, 
+            'message' => "Insufficient stock for {$product['name']} (only {$product['stock_quantity']} left)"
+        ];
+    }
+    
+    return ['ok' => true];
 }
 ?>
