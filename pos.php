@@ -1095,6 +1095,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('👥 Customers:', ALL_CUSTOMERS.length);
 });
 </script>
-
+<script src="pwa.js"></script>
 </body>
 </html>
