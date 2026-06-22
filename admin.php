@@ -61,6 +61,12 @@ $currency = $business['currency_symbol'] ?? 'DT';
 <meta name="theme-color" content="<?= $theme['primary_color'] ?>">
 <title><?= htmlspecialchars($business['name']) ?> · Admin · BizFlow</title>
 <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BizFlow">
+<link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6&size=180">
+
 <?= renderThemeCSS($theme) ?>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
