@@ -1285,7 +1285,45 @@ function processSale(total, paid, change) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'create_sale', ...data})
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) throw new Error('Network error');
+        return r.text();  // Get as text first
+    })
+    .then(text => {
+        // Try to parse as JSON
+        let res;
+        try {
+            res = JSON.parse(text);
+        } catch (e) {
+            console.error('Server response:', text);
+            throw new Error('Invalid response from server');
+        }
+        
+        if (res.success) {
+            closeModal('paymentModal');
+            
+            document.getElementById('successAmount').textContent = total.toFixed(2) + ' ' + CURRENCY;
+            document.getElementById('successInvoice').textContent = res.invoice_number;
+            
+            if (change > 0) {
+                document.getElementById('successChange').style.display = 'block';
+                document.getElementById('successChangeAmount').textContent = change.toFixed(2) + ' ' + CURRENCY;
+            } else {
+                document.getElementById('successChange').style.display = 'none';
+            }
+            
+            openModal('successModal');
+            
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        } else {
+            showToast('❌ ' + (res.message || 'Sale failed'), 'error');
+        }
+    })
+    .catch(e => {
+        console.error('Sale error:', e);
+        showToast('❌ ' + e.message, 'error');
+    });
+}
     .then(res => {
         if (res.success) {
             closeModal('paymentModal');
