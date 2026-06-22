@@ -55,6 +55,12 @@ while ($c = $custQuery->fetch_assoc()) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>POS · BizFlow</title>
 <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3b82f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BizFlow">
+<link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6&size=180">
+
 <?= renderThemeCSS($theme) ?>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
