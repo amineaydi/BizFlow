@@ -24,10 +24,16 @@ $myStats = $conn->query("
     AND DATE(created_at) = '$today' AND status = 'completed'
 ")->fetch_assoc();
 ?>
+<?php
+header('Content-Type: text/html; charset=UTF-8');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    
+
 <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="<?= $theme['primary_color'] ?>">
 <title>POS · <?= htmlspecialchars($business['name']) ?></title>
@@ -823,54 +829,59 @@ label {
         </div>
         
         <!-- PRODUCTS GRID -->
-        <div class="products-grid-wrap">
-            <div class="products-grid" id="productsGrid">
-                <?php
-                $products = $conn->query("
-                    SELECT * FROM products 
-                    WHERE business_id = $bid AND is_active = 1 
-                    ORDER BY sold_count DESC, name
-                ");
-                while ($p = $products->fetch_assoc()):
-                    $outOfStock = $p['stock_quantity'] <= 0;
-                    $lowStock = !$outOfStock && $p['stock_quantity'] <= $p['low_stock_threshold'];
-                ?>
-                    <div class="product-card <?= $outOfStock ? 'out-of-stock' : '' ?>" 
-                         data-id="<?= $p['id'] ?>"
-                         data-category="<?= $p['category_id'] ?? 0 ?>"
-                         data-name="<?= htmlspecialchars(strtolower($p['name'])) ?>"
-                         data-sku="<?= htmlspecialchars(strtolower($p['sku'] ?? '')) ?>"
-                         data-barcode="<?= htmlspecialchars($p['barcode'] ?? '') ?>"
-                         <?= $outOfStock ? '' : 'onclick="addToCart(' . htmlspecialchars(json_encode([
-                             'id' => $p['id'],
-                             'name' => $p['name'],
-                             'price' => floatval($p['selling_price']),
-                             'stock' => $p['stock_quantity']
-                         ])) . ')"' ?>>
-                        
-                        <?php if ($outOfStock): ?>
-                            <span class="stock-badge out">OUT</span>
-                        <?php elseif ($lowStock): ?>
-                            <span class="stock-badge low"><?= $p['stock_quantity'] ?></span>
-                        <?php else: ?>
-                            <span class="stock-badge"><?= $p['stock_quantity'] ?></span>
-                        <?php endif; ?>
-                        
-                        <div class="product-image">
-                            <?php if ($p['image_url']): ?>
-                                <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="" onerror="this.style.display='none'">
-                            <?php else: ?>
-                                📦
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="product-name"><?= htmlspecialchars($p['name']) ?></div>
-                        <div class="product-price"><?= number_format($p['selling_price'], 2) ?> <?= $currency ?></div>
-                    </div>
-                <?php endwhile; ?>
+<div class="products-grid-wrap">
+    <div class="products-grid" id="productsGrid">
+        <?php
+        $products = $conn->query("
+            SELECT * FROM products 
+            WHERE business_id = $bid AND is_active = 1 
+            ORDER BY sold_count DESC, name
+        ");
+        while ($p = $products->fetch_assoc()):
+            $outOfStock = $p['stock_quantity'] <= 0;
+            $lowStock = !$outOfStock && $p['stock_quantity'] <= $p['low_stock_threshold'];
+            
+            // Safe data attributes
+            $productId = intval($p['id']);
+            $productName = htmlspecialchars($p['name'], ENT_QUOTES);
+            $productPrice = floatval($p['selling_price']);
+            $productStock = intval($p['stock_quantity']);
+            $categoryId = intval($p['category_id'] ?? 0);
+        ?>
+            <div class="product-card <?= $outOfStock ? 'out-of-stock' : '' ?>" 
+                 data-id="<?= $productId ?>"
+                 data-category="<?= $categoryId ?>"
+                 data-name="<?= strtolower($productName) ?>"
+                 data-sku="<?= strtolower(htmlspecialchars($p['sku'] ?? '', ENT_QUOTES)) ?>"
+                 data-barcode="<?= htmlspecialchars($p['barcode'] ?? '', ENT_QUOTES) ?>"
+                 data-product-id="<?= $productId ?>"
+                 data-product-name="<?= $productName ?>"
+                 data-product-price="<?= $productPrice ?>"
+                 data-product-stock="<?= $productStock ?>"
+                 <?php if (!$outOfStock): ?>onclick="handleProductClick(this)"<?php endif; ?>>
+                
+                <?php if ($outOfStock): ?>
+                    <span class="stock-badge out">OUT</span>
+                <?php elseif ($lowStock): ?>
+                    <span class="stock-badge low"><?= $productStock ?></span>
+                <?php else: ?>
+                    <span class="stock-badge"><?= $productStock ?></span>
+                <?php endif; ?>
+                
+                <div class="product-image">
+                    <?php if (!empty($p['image_url'])): ?>
+                        <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="" onerror="this.parentElement.innerHTML='📦'">
+                    <?php else: ?>
+                        📦
+                    <?php endif; ?>
+                </div>
+                
+                <div class="product-name"><?= $productName ?></div>
+                <div class="product-price"><?= number_format($productPrice, 2) ?> <?= $currency ?></div>
             </div>
-        </div>
+        <?php endwhile; ?>
     </div>
+</div>
     
     <!-- ===== RIGHT: CART ===== -->
     <div class="cart-side" id="cartSide">
@@ -1021,6 +1032,16 @@ label {
 </div>
 
 <script>
+    // ===== SAFE PRODUCT CLICK HANDLER =====
+function handleProductClick(card) {
+    const product = {
+        id: parseInt(card.dataset.productId),
+        name: card.dataset.productName,
+        price: parseFloat(card.dataset.productPrice),
+        stock: parseInt(card.dataset.productStock)
+    };
+    addToCart(product);
+}
 const BUSINESS_ID = <?= $bid ?>;
 const USER_ID = <?= $uid ?>;
 const USER_NAME = '<?= addslashes($_SESSION['user_name']) ?>';
@@ -1060,6 +1081,15 @@ function filterCategory(catId, btn) {
 }
 
 // ===== CART =====
+function addProduct(id, name, price, stock) {
+    addToCart({
+        id: id,
+        name: name,
+        price: price,
+        stock: stock
+    });
+}
+
 function addToCart(product) {
     const existing = cart.find(i => i.id === product.id);
     
