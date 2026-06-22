@@ -469,6 +469,6 @@ function togglePassword() {
     input.type = input.type === 'password' ? 'text' : 'password';
 }
 </script>
-
+<script src="pwa.js"></script>
 </body>
 </html>
