@@ -53,6 +53,7 @@ while ($c = $custQuery->fetch_assoc()) {
 <head>
 
 <title>POS · BizFlow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- 🛒 POS Specific Settings -->
 <meta name="theme-color" content="#10b981">
 <meta name="apple-mobile-web-app-capable" content="yes">
