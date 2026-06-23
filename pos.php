@@ -51,15 +51,25 @@ while ($c = $custQuery->fetch_assoc()) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
 <title>POS · BizFlow</title>
-<link rel="manifest" href="manifest_pos.json">
-<meta name="theme-color" content="#3b82f6">
+<!-- 🛒 POS Specific Settings -->
+<meta name="theme-color" content="#10b981">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BizFlow">
-<link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6&size=180">
+<meta name="apple-mobile-web-app-title" content="POS">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- 🟢 GREEN POS Icons -->
+<link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=180">
+<link rel="apple-touch-icon" sizes="120x120" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=120">
+<link rel="apple-touch-icon" sizes="152x152" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=152">
+<link rel="apple-touch-icon" sizes="180x180" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=180">
+
+<link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=32">
+
+<!-- POS Manifest -->
+<link rel="manifest" href="manifest_pos.json">
 
 <?= renderThemeCSS($theme) ?>
 <style>
