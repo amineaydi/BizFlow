@@ -74,12 +74,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<!-- 🛒 POS Specific Settings -->
 <meta name="theme-color" content="#10b981">
-<title>Cashier Login · BizFlow POS</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="POS">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- 🟢 GREEN POS Icons -->
+<link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=180">
+<link rel="apple-touch-icon" sizes="120x120" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=120">
+<link rel="apple-touch-icon" sizes="152x152" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=152">
+<link rel="apple-touch-icon" sizes="180x180" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=180">
+
+<link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=32">
+
+<!-- POS Manifest -->
 <link rel="manifest" href="manifest_pos.json">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; user-select:none; }
 
