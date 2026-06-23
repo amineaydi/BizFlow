@@ -553,7 +553,7 @@ label {
                     <a href="admin.php" class="icon-btn" title="Admin">⚙️</a>
                 <?php endif; ?>
                 
-                <a href="logout.php" class="icon-btn" title="Logout">🚪</a>
+                <a href="pos_logout.php" class="icon-btn" title="Logout">🚪</a>
             </div>
         </div>
         
