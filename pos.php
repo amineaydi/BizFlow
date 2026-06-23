@@ -4,7 +4,7 @@ session_start();
 require_once 'db.php';
 require_once 'theme.php';
 
-requireLogin();
+requirePosLogin();  // ✅ NEW - Only POS cashiers
 
 $bid = getBusinessId();
 $uid = getUserId();
