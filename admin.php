@@ -1485,15 +1485,860 @@ select.form-select {
                 </div>
             </div>
             
-            <div class="tab-content" id="tab-reports">
-                <div class="card">
-                    <div class="card-title">📈 Reports & Analytics</div>
-                    <div class="empty-state">
-                        <div class="empty-icon">📊</div>
-                        <p>Beautiful charts coming soon!</p>
+            <!-- ===== REPORTS TAB ===== -->
+<div class="tab-content" id="tab-reports">
+    
+    <?php
+    // ========================================
+    // 📊 LOAD ALL REPORT DATA
+    // ========================================
+    
+    // Period selector
+    $period = $_GET['period'] ?? '7';
+    $periods = ['7' => 'Last 7 Days', '30' => 'Last 30 Days', '90' => 'Last 90 Days', '365' => 'Last Year'];
+    
+    $startDate = date('Y-m-d', strtotime("-{$period} days"));
+    
+    // Total Revenue
+    $totalRev = $conn->query("
+        SELECT COALESCE(SUM(total_amount), 0) as total, COUNT(*) as count
+        FROM sales 
+        WHERE business_id = $bid 
+        AND status = 'completed'
+        AND DATE(created_at) >= '$startDate'
+    ")->fetch_assoc();
+    
+    // Total Profit
+    $totalProfit = $conn->query("
+        SELECT COALESCE(SUM(si.profit), 0) as profit
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        WHERE s.business_id = $bid 
+        AND s.status = 'completed'
+        AND DATE(s.created_at) >= '$startDate'
+    ")->fetch_assoc()['profit'];
+    
+    // Total Expenses
+    $totalExp = $conn->query("
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM expenses 
+        WHERE business_id = $bid 
+        AND expense_date >= '$startDate'
+    ")->fetch_assoc()['total'];
+    
+    // Net Profit
+    $netProfit = $totalProfit - $totalExp;
+    
+    // Average transaction
+    $avgTransaction = $totalRev['count'] > 0 ? $totalRev['total'] / $totalRev['count'] : 0;
+    
+    // Daily sales for chart
+    $dailySales = [];
+    $result = $conn->query("
+        SELECT DATE(created_at) as date, 
+               COALESCE(SUM(total_amount), 0) as revenue,
+               COUNT(*) as count
+        FROM sales 
+        WHERE business_id = $bid 
+        AND status = 'completed'
+        AND DATE(created_at) >= '$startDate'
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+    ");
+    while ($row = $result->fetch_assoc()) {
+        $dailySales[] = $row;
+    }
+    
+    // Top 10 products
+    $topProducts = $conn->query("
+        SELECT p.name, p.selling_price,
+               SUM(si.quantity) as units_sold,
+               SUM(si.total) as revenue,
+               SUM(si.profit) as profit
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        JOIN products p ON p.id = si.product_id
+        WHERE s.business_id = $bid 
+        AND s.status = 'completed'
+        AND DATE(s.created_at) >= '$startDate'
+        GROUP BY p.id
+        ORDER BY units_sold DESC
+        LIMIT 10
+    ");
+    
+    // Top customers
+    $topCustomers = $conn->query("
+        SELECT c.name, c.phone, COUNT(s.id) as visits, SUM(s.total_amount) as spent
+        FROM customers c
+        JOIN sales s ON s.customer_id = c.id
+        WHERE s.business_id = $bid 
+        AND s.status = 'completed'
+        AND DATE(s.created_at) >= '$startDate'
+        GROUP BY c.id
+        ORDER BY spent DESC
+        LIMIT 10
+    ");
+    
+    // Top cashiers
+    $topCashiers = $conn->query("
+        SELECT u.full_name, COUNT(s.id) as sales_count, SUM(s.total_amount) as revenue
+        FROM sales s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.business_id = $bid 
+        AND s.status = 'completed'
+        AND DATE(s.created_at) >= '$startDate'
+        GROUP BY u.id
+        ORDER BY revenue DESC
+        LIMIT 5
+    ");
+    
+    // Sales by category
+    $byCategory = $conn->query("
+        SELECT c.name, c.color, c.icon,
+               SUM(si.quantity) as units,
+               SUM(si.total) as revenue
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        JOIN products p ON p.id = si.product_id
+        LEFT JOIN categories c ON c.id = p.category_id
+        WHERE s.business_id = $bid 
+        AND s.status = 'completed'
+        AND DATE(s.created_at) >= '$startDate'
+        GROUP BY c.id
+        ORDER BY revenue DESC
+    ");
+    
+    // Peak hours
+    $peakHours = [];
+    $result = $conn->query("
+        SELECT HOUR(created_at) as hour, COUNT(*) as count, SUM(total_amount) as revenue
+        FROM sales
+        WHERE business_id = $bid
+        AND status = 'completed'
+        AND DATE(created_at) >= '$startDate'
+        GROUP BY HOUR(created_at)
+        ORDER BY hour
+    ");
+    while ($row = $result->fetch_assoc()) {
+        $peakHours[intval($row['hour'])] = $row;
+    }
+    
+    // Day of week
+    $byDayOfWeek = [];
+    $result = $conn->query("
+        SELECT DAYOFWEEK(created_at) as day, 
+               COUNT(*) as count, 
+               SUM(total_amount) as revenue
+        FROM sales
+        WHERE business_id = $bid
+        AND status = 'completed'
+        AND DATE(created_at) >= '$startDate'
+        GROUP BY DAYOFWEEK(created_at)
+    ");
+    while ($row = $result->fetch_assoc()) {
+        $byDayOfWeek[intval($row['day'])] = $row;
+    }
+    
+    // Payment methods
+    $byPayment = $conn->query("
+        SELECT payment_method, COUNT(*) as count, SUM(total_amount) as revenue
+        FROM sales
+        WHERE business_id = $bid
+        AND status = 'completed'
+        AND DATE(created_at) >= '$startDate'
+        GROUP BY payment_method
+    ");
+    
+    // Expense breakdown
+    $expenseByCat = $conn->query("
+        SELECT ec.name, ec.icon, ec.color, 
+               COUNT(e.id) as count, 
+               SUM(e.amount) as total
+        FROM expenses e
+        LEFT JOIN expense_categories ec ON ec.id = e.category_id
+        WHERE e.business_id = $bid
+        AND e.expense_date >= '$startDate'
+        GROUP BY ec.id
+        ORDER BY total DESC
+    ");
+    ?>
+    
+    <!-- PERIOD SELECTOR -->
+    <div class="card" style="margin-bottom:20px;">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">
+            <div>
+                <div class="card-title" style="margin-bottom:4px;">📈 Reports & Analytics</div>
+                <div style="font-size:12px;color:#9ca3af;">Period: <?= $periods[$period] ?></div>
+            </div>
+            
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <?php foreach ($periods as $key => $label): ?>
+                    <button onclick="changePeriod('<?= $key ?>')" 
+                            class="btn-sm" 
+                            style="<?= $period == $key ? 'background:var(--primary);color:white;border-color:transparent;' : '' ?>">
+                        <?= $label ?>
+                    </button>
+                <?php endforeach; ?>
+                
+                <button class="btn-sm" onclick="window.print()" style="background:rgba(16,185,129,0.15);color:#10b981;border-color:rgba(16,185,129,0.3);">
+                    🖨️ Print
+                </button>
+                
+                <button class="btn-sm" onclick="exportCSV()" style="background:rgba(168,85,247,0.15);color:#a855f7;border-color:rgba(168,85,247,0.3);">
+                    📤 Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- KEY METRICS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="icon" style="background:rgba(16,185,129,0.15);color:#10b981;">💰</div>
+            <div class="info">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value"><?= number_format($totalRev['total'], 0) ?> <?= $currency ?></div>
+                <div class="stat-change"><?= $totalRev['count'] ?> sales</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="icon" style="background:rgba(168,85,247,0.15);color:#a855f7;">📈</div>
+            <div class="info">
+                <div class="stat-label">Gross Profit</div>
+                <div class="stat-value"><?= number_format($totalProfit, 0) ?> <?= $currency ?></div>
+                <div class="stat-change">From sales</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="icon" style="background:rgba(239,68,68,0.15);color:#ef4444;">💸</div>
+            <div class="info">
+                <div class="stat-label">Total Expenses</div>
+                <div class="stat-value"><?= number_format($totalExp, 0) ?> <?= $currency ?></div>
+                <div class="stat-change">Operating costs</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="icon" style="background:rgba(59,130,246,0.15);color:#3b82f6;">💎</div>
+            <div class="info">
+                <div class="stat-label">Net Profit</div>
+                <div class="stat-value" style="color:<?= $netProfit >= 0 ? '#10b981' : '#ef4444' ?>;">
+                    <?= number_format($netProfit, 0) ?> <?= $currency ?>
+                </div>
+                <div class="stat-change"><?= $netProfit >= 0 ? '📈 Profit' : '📉 Loss' ?></div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="icon" style="background:rgba(251,191,36,0.15);color:#fbbf24;">🎯</div>
+            <div class="info">
+                <div class="stat-label">Avg Transaction</div>
+                <div class="stat-value"><?= number_format($avgTransaction, 0) ?> <?= $currency ?></div>
+                <div class="stat-change">Per sale</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="icon" style="background:rgba(236,72,153,0.15);color:#ec4899;">📦</div>
+            <div class="info">
+                <div class="stat-label">Total Items Sold</div>
+                <div class="stat-value">
+                    <?php
+                    $totalItems = $conn->query("
+                        SELECT COALESCE(SUM(si.quantity), 0) total
+                        FROM sale_items si
+                        JOIN sales s ON s.id = si.sale_id
+                        WHERE s.business_id = $bid 
+                        AND s.status = 'completed'
+                        AND DATE(s.created_at) >= '$startDate'
+                    ")->fetch_assoc()['total'];
+                    echo number_format($totalItems);
+                    ?>
+                </div>
+                <div class="stat-change">Units</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- REVENUE CHART -->
+    <div class="card">
+        <div class="card-head">
+            <div class="card-title">📊 Daily Revenue Trend</div>
+        </div>
+        <div style="position:relative;height:300px;">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- TWO COLUMNS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" class="reports-row">
+        
+        <!-- TOP PRODUCTS -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">🏆 Top Selling Products</div>
+            </div>
+            
+            <?php if ($topProducts->num_rows === 0): ?>
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    <p>No sales yet</p>
+                </div>
+            <?php else: ?>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <?php $rank = 1; while ($p = $topProducts->fetch_assoc()): ?>
+                        <div style="display:flex;align-items:center;gap:14px;padding:12px;background:var(--bg-dark);border-radius:10px;">
+                            <div style="width:36px;height:36px;background:<?= $rank <= 3 ? ['#fbbf24', '#94a3b8', '#cd7f32'][$rank-1] : 'var(--primary)' ?>;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:white;">
+                                <?= $rank <= 3 ? ['🥇','🥈','🥉'][$rank-1] : "#$rank" ?>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    <?= htmlspecialchars($p['name']) ?>
+                                </div>
+                                <div style="font-size:11px;color:#9ca3af;">
+                                    <?= $p['units_sold'] ?> units · <?= number_format($p['profit'], 0) ?> <?= $currency ?> profit
+                                </div>
+                            </div>
+                            <div style="font-weight:800;color:var(--primary);font-size:15px;white-space:nowrap;">
+                                <?= number_format($p['revenue'], 0) ?> <?= $currency ?>
+                            </div>
+                        </div>
+                    <?php $rank++; endwhile; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        
+        <!-- TOP CUSTOMERS -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">👑 Top Customers</div>
+            </div>
+            
+            <?php if ($topCustomers->num_rows === 0): ?>
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <p>No customer sales yet</p>
+                </div>
+            <?php else: ?>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <?php $rank = 1; while ($c = $topCustomers->fetch_assoc()): ?>
+                        <div style="display:flex;align-items:center;gap:14px;padding:12px;background:var(--bg-dark);border-radius:10px;">
+                            <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-size:14px;">
+                                <?= strtoupper(substr($c['name'], 0, 1)) ?>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:700;font-size:14px;"><?= htmlspecialchars($c['name']) ?></div>
+                                <div style="font-size:11px;color:#9ca3af;">
+                                    <?= $c['visits'] ?> visits
+                                    <?php if ($c['phone']): ?>· 📞 <?= htmlspecialchars($c['phone']) ?><?php endif; ?>
+                                </div>
+                            </div>
+                            <div style="font-weight:800;color:#10b981;font-size:15px;">
+                                <?= number_format($c['spent'], 0) ?>
+                            </div>
+                        </div>
+                    <?php $rank++; endwhile; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    
+    <!-- TOP CASHIERS -->
+    <div class="card">
+        <div class="card-head">
+            <div class="card-title">🥇 Top Performing Cashiers</div>
+        </div>
+        
+        <?php if ($topCashiers->num_rows === 0): ?>
+            <div class="empty-state">
+                <div class="empty-icon">👨‍💼</div>
+                <p>No staff sales yet</p>
+            </div>
+        <?php else: ?>
+            <table class="data-table">
+                <thead>
+                    <tr><th>Rank</th><th>Cashier</th><th>Sales</th><th>Revenue</th><th>Avg</th></tr>
+                </thead>
+                <tbody>
+                    <?php $rank = 1; while ($cashier = $topCashiers->fetch_assoc()): 
+                        $avg = $cashier['sales_count'] > 0 ? $cashier['revenue'] / $cashier['sales_count'] : 0;
+                    ?>
+                        <tr>
+                            <td data-label="Rank">
+                                <?= $rank <= 3 ? ['🥇','🥈','🥉'][$rank-1] : "#$rank" ?>
+                            </td>
+                            <td data-label="Cashier"><strong><?= htmlspecialchars($cashier['full_name']) ?></strong></td>
+                            <td data-label="Sales"><?= $cashier['sales_count'] ?></td>
+                            <td data-label="Revenue" style="color:#10b981;font-weight:800;"><?= number_format($cashier['revenue'], 0) ?> <?= $currency ?></td>
+                            <td data-label="Average"><?= number_format($avg, 0) ?> <?= $currency ?></td>
+                        </tr>
+                    <?php $rank++; endwhile; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    
+    <!-- TWO COLUMNS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" class="reports-row">
+        
+        <!-- PEAK HOURS -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">⏰ Peak Hours</div>
+            </div>
+            <div style="position:relative;height:250px;">
+                <canvas id="hoursChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- DAY OF WEEK -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">📅 Sales by Day</div>
+            </div>
+            <div style="position:relative;height:250px;">
+                <canvas id="weekChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TWO COLUMNS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;" class="reports-row">
+        
+        <!-- CATEGORY BREAKDOWN -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">🎨 Sales by Category</div>
+            </div>
+            
+            <?php if ($byCategory->num_rows === 0): ?>
+                <div class="empty-state">
+                    <div class="empty-icon">📂</div>
+                    <p>No category sales</p>
+                </div>
+            <?php else: ?>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <?php while ($cat = $byCategory->fetch_assoc()): 
+                        $catRevenue = floatval($cat['revenue']);
+                        $catPercent = $totalRev['total'] > 0 ? ($catRevenue / $totalRev['total']) * 100 : 0;
+                    ?>
+                        <div style="background:var(--bg-dark);padding:14px;border-radius:10px;">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                                <div style="font-weight:700;">
+                                    <?= $cat['icon'] ?? '📦' ?> <?= htmlspecialchars($cat['name'] ?? 'Uncategorized') ?>
+                                </div>
+                                <div style="font-weight:800;color:var(--primary);">
+                                    <?= number_format($catRevenue, 0) ?> <?= $currency ?>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="flex:1;height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
+                                    <div style="height:100%;width:<?= $catPercent ?>%;background:<?= $cat['color'] ?? '#3b82f6' ?>;"></div>
+                                </div>
+                                <div style="font-size:11px;color:#9ca3af;min-width:50px;text-align:right;">
+                                    <?= number_format($catPercent, 1) ?>%
+                                </div>
+                            </div>
+                            <div style="font-size:11px;color:#6b7280;margin-top:6px;">
+                                <?= $cat['units'] ?> units sold
+                            </div>
+                        </div>
+                    <?php endwhile; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        
+        <!-- PAYMENT METHODS -->
+        <div class="card">
+            <div class="card-head">
+                <div class="card-title">💳 Payment Methods</div>
+            </div>
+            <div style="position:relative;height:250px;">
+                <canvas id="paymentChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EXPENSE BREAKDOWN -->
+    <?php if ($expenseByCat->num_rows > 0): ?>
+    <div class="card">
+        <div class="card-head">
+            <div class="card-title">💸 Expense Breakdown</div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+            <?php while ($exp = $expenseByCat->fetch_assoc()): 
+                $expPercent = $totalExp > 0 ? ($exp['total'] / $totalExp) * 100 : 0;
+            ?>
+                <div style="background:var(--bg-dark);padding:16px;border-radius:12px;border-left:4px solid <?= $exp['color'] ?? '#ef4444' ?>;">
+                    <div style="font-size:24px;margin-bottom:8px;"><?= $exp['icon'] ?? '💸' ?></div>
+                    <div style="font-weight:700;font-size:14px;margin-bottom:4px;"><?= htmlspecialchars($exp['name'] ?? 'Uncategorized') ?></div>
+                    <div style="font-weight:800;color:#ef4444;font-size:18px;">
+                        <?= number_format($exp['total'], 0) ?> <?= $currency ?>
+                    </div>
+                    <div style="font-size:11px;color:#9ca3af;margin-top:4px;">
+                        <?= $exp['count'] ?> expenses · <?= number_format($expPercent, 1) ?>%
                     </div>
                 </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+    
+    <!-- RECENT SALES TABLE -->
+    <div class="card">
+        <div class="card-head">
+            <div class="card-title">📋 Detailed Sales History</div>
+            <div style="font-size:12px;color:#9ca3af;">Last 50 sales</div>
+        </div>
+        
+        <?php
+        $allSales = $conn->query("
+            SELECT s.*, c.name as customer_name, u.full_name as cashier_name,
+                   (SELECT COUNT(*) FROM sale_items WHERE sale_id = s.id) as items_count
+            FROM sales s
+            LEFT JOIN customers c ON c.id = s.customer_id
+            LEFT JOIN users u ON u.id = s.user_id
+            WHERE s.business_id = $bid 
+            AND s.status = 'completed'
+            AND DATE(s.created_at) >= '$startDate'
+            ORDER BY s.created_at DESC
+            LIMIT 50
+        ");
+        ?>
+        
+        <?php if ($allSales->num_rows === 0): ?>
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <p>No sales in this period</p>
             </div>
+        <?php else: ?>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Cashier</th>
+                        <th>Items</th>
+                        <th>Method</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($s = $allSales->fetch_assoc()): ?>
+                        <tr>
+                            <td data-label="Invoice">
+                                <code style="background:var(--bg-dark);padding:4px 8px;border-radius:6px;font-size:11px;">
+                                    <?= htmlspecialchars($s['invoice_number']) ?>
+                                </code>
+                            </td>
+                            <td data-label="Date">
+                                <?= date('M d, H:i', strtotime($s['created_at'])) ?>
+                            </td>
+                            <td data-label="Customer">
+                                <?= htmlspecialchars($s['customer_name'] ?? 'Walk-in') ?>
+                            </td>
+                            <td data-label="Cashier">
+                                <?= htmlspecialchars($s['cashier_name'] ?? '-') ?>
+                            </td>
+                            <td data-label="Items">
+                                <?= $s['items_count'] ?>
+                            </td>
+                            <td data-label="Method">
+                                <span class="cat-badge" style="background:<?= $s['payment_method'] === 'cash' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)' ?>;color:<?= $s['payment_method'] === 'cash' ? '#10b981' : '#3b82f6' ?>;">
+                                    <?= $s['payment_method'] === 'cash' ? '💵' : '💳' ?> <?= ucfirst($s['payment_method']) ?>
+                                </span>
+                            </td>
+                            <td data-label="Total" style="color:#10b981;font-weight:800;">
+                                <?= number_format($s['total_amount'], 2) ?> <?= $currency ?>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    
+    <style>
+    @media (max-width: 1024px) {
+        .reports-row { grid-template-columns: 1fr !important; }
+    }
+    
+    @media print {
+        body { background: white !important; color: black !important; }
+        .sidebar, .topbar, .nav-item, .btn, button { display: none !important; }
+        .content { padding: 0 !important; }
+        .card { 
+            background: white !important; 
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+            page-break-inside: avoid;
+        }
+        .card-title, .stat-label, .stat-value, td, th { color: black !important; }
+    }
+    </style>
+</div>
+
+<!-- ===== CHART.JS LIBRARY ===== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// ===== CHART DATA FROM PHP =====
+const CHART_DATA = {
+    daily: <?= json_encode(array_map(function($d) {
+        return ['date' => $d['date'], 'revenue' => floatval($d['revenue']), 'count' => intval($d['count'])];
+    }, $dailySales)) ?>,
+    
+    hours: <?php
+        $hoursData = [];
+        for ($i = 0; $i < 24; $i++) {
+            $hoursData[] = isset($peakHours[$i]) ? floatval($peakHours[$i]['revenue']) : 0;
+        }
+        echo json_encode($hoursData);
+    ?>,
+    
+    weekDays: <?php
+        // MySQL DAYOFWEEK: 1=Sunday, 7=Saturday
+        $weekData = [];
+        $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for ($i = 1; $i <= 7; $i++) {
+            $weekData[] = isset($byDayOfWeek[$i]) ? floatval($byDayOfWeek[$i]['revenue']) : 0;
+        }
+        echo json_encode($weekData);
+    ?>,
+    
+    payments: <?php
+        $payData = [];
+        $payments = $conn->query("
+            SELECT payment_method, SUM(total_amount) as total
+            FROM sales
+            WHERE business_id = $bid AND status = 'completed' AND DATE(created_at) >= '$startDate'
+            GROUP BY payment_method
+        ");
+        while ($row = $payments->fetch_assoc()) {
+            $payData[ucfirst($row['payment_method'])] = floatval($row['total']);
+        }
+        echo json_encode($payData);
+    ?>,
+    
+    currency: '<?= $currency ?>'
+};
+
+// ===== INIT CHARTS WHEN TAB SHOWS =====
+let chartsInitialized = false;
+
+function initReportsCharts() {
+    if (chartsInitialized) return;
+    if (typeof Chart === 'undefined') {
+        setTimeout(initReportsCharts, 200);
+        return;
+    }
+    chartsInitialized = true;
+    
+    // Chart.js global config
+    Chart.defaults.color = '#9ca3af';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+    Chart.defaults.font.family = 'Inter, sans-serif';
+    
+    // ===== REVENUE CHART =====
+    const ctxRev = document.getElementById('revenueChart');
+    if (ctxRev) {
+        new Chart(ctxRev, {
+            type: 'line',
+            data: {
+                labels: CHART_DATA.daily.map(d => {
+                    const date = new Date(d.date);
+                    return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                }),
+                datasets: [{
+                    label: 'Revenue',
+                    data: CHART_DATA.daily.map(d => d.revenue),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1a1f33',
+                        padding: 14,
+                        callbacks: {
+                            label: ctx => ctx.parsed.y.toLocaleString() + ' ' + CHART_DATA.currency
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: v => v.toLocaleString() + ' ' + CHART_DATA.currency
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // ===== HOURS CHART =====
+    const ctxHours = document.getElementById('hoursChart');
+    if (ctxHours) {
+        new Chart(ctxHours, {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => i + 'h'),
+                datasets: [{
+                    label: 'Revenue',
+                    data: CHART_DATA.hours,
+                    backgroundColor: 'rgba(168,85,247,0.7)',
+                    borderColor: '#a855f7',
+                    borderWidth: 2,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+    
+    // ===== WEEK CHART =====
+    const ctxWeek = document.getElementById('weekChart');
+    if (ctxWeek) {
+        new Chart(ctxWeek, {
+            type: 'bar',
+            data: {
+                labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                datasets: [{
+                    label: 'Revenue',
+                    data: CHART_DATA.weekDays,
+                    backgroundColor: [
+                        'rgba(239,68,68,0.7)',
+                        'rgba(59,130,246,0.7)',
+                        'rgba(168,85,247,0.7)',
+                        'rgba(236,72,153,0.7)',
+                        'rgba(251,191,36,0.7)',
+                        'rgba(16,185,129,0.7)',
+                        'rgba(245,158,11,0.7)'
+                    ],
+                    borderWidth: 0,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+    
+    // ===== PAYMENT CHART =====
+    const ctxPay = document.getElementById('paymentChart');
+    if (ctxPay && Object.keys(CHART_DATA.payments).length > 0) {
+        new Chart(ctxPay, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(CHART_DATA.payments),
+                datasets: [{
+                    data: Object.values(CHART_DATA.payments),
+                    backgroundColor: ['#10b981', '#3b82f6', '#a855f7', '#fbbf24'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 13, weight: 'bold' }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.label + ': ' + ctx.parsed.toLocaleString() + ' ' + CHART_DATA.currency
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// ===== PERIOD CHANGE =====
+function changePeriod(days) {
+    window.location.href = '?tab=reports&period=' + days;
+}
+
+// ===== EXPORT CSV =====
+function exportCSV() {
+    let csv = 'Invoice,Date,Customer,Cashier,Items,Method,Total\n';
+    
+    document.querySelectorAll('#tab-reports table tbody tr').forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 7) {
+            const data = [];
+            cells.forEach(cell => {
+                data.push('"' + cell.textContent.trim().replace(/\s+/g, ' ') + '"');
+            });
+            csv += data.join(',') + '\n';
+        }
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bizflow-report-' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ===== INIT CHARTS WHEN REPORTS TAB CLICKED =====
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if reports tab is active on load
+    if (document.getElementById('tab-reports').classList.contains('active')) {
+        setTimeout(initReportsCharts, 300);
+    }
+    
+    // Init when tab clicked
+    document.querySelectorAll('.nav-item').forEach(item => {
+        const onclick = item.getAttribute('onclick') || '';
+        if (onclick.includes("'reports'")) {
+            item.addEventListener('click', () => {
+                setTimeout(initReportsCharts, 300);
+            });
+        }
+    });
+});
+</script>
             
         </div>
     </div>
