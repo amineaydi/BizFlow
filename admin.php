@@ -872,10 +872,7 @@ select.form-select {
                 <span class="nav-icon">📊</span>
                 <span>Dashboard</span>
             </button>
-            <a href="pos.php" class="nav-item">
-                <span class="nav-icon">🛒</span>
-                <span>POS Terminal</span>
-            </a>
+            
         </div>
         
         <div class="nav-section">
