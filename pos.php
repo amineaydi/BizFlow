@@ -4,7 +4,7 @@ session_start();
 require_once 'db.php';
 require_once 'theme.php';
 
-requirePosLogin();  // ✅ NEW - Only POS cashiers
+requirePosLogin();
 
 $bid = getBusinessId();
 $uid = getUserId();
@@ -12,38 +12,53 @@ $business = getBusinessInfo();
 $theme = loadCurrentTheme();
 $currency = $business['currency_symbol'] ?? 'DT';
 
-$settings = $conn->query("SELECT * FROM business_settings WHERE business_id = $bid")->fetch_assoc();
+// ✅ FIXED - Prepared statements
+$stmt = $conn->prepare("SELECT * FROM business_settings WHERE business_id = ?");
+$stmt->bind_param("i", $bid);
+$stmt->execute();
+$settings = $stmt->get_result()->fetch_assoc();
 $taxRate = floatval($settings['tax_rate'] ?? 0);
 $taxEnabled = intval($settings['tax_enabled'] ?? 0);
 
 $today = date('Y-m-d');
-$myStats = $conn->query("
-    SELECT COUNT(*) as count, COALESCE(SUM(total_amount),0) as revenue
-    FROM sales WHERE business_id = $bid AND user_id = $uid 
-    AND DATE(created_at) = '$today' AND status = 'completed'
-")->fetch_assoc();
 
-// Load all products as PHP array
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as count, COALESCE(SUM(total_amount),0) as revenue
+    FROM sales WHERE business_id = ? AND user_id = ? 
+    AND DATE(created_at) = ? AND status = 'completed'
+");
+$stmt->bind_param("iis", $bid, $uid, $today);
+$stmt->execute();
+$myStats = $stmt->get_result()->fetch_assoc();
+
+// ✅ FIXED - Prepared statements for all queries
 $productsList = [];
-$prodQuery = $conn->query("
+$stmt = $conn->prepare("
     SELECT * FROM products 
-    WHERE business_id = $bid AND is_active = 1 
+    WHERE business_id = ? AND is_active = 1 
     ORDER BY sold_count DESC, name
 ");
+$stmt->bind_param("i", $bid);
+$stmt->execute();
+$prodQuery = $stmt->get_result();
 while ($p = $prodQuery->fetch_assoc()) {
     $productsList[] = $p;
 }
 
-// Load categories
 $catsList = [];
-$catsQuery = $conn->query("SELECT * FROM categories WHERE business_id = $bid AND is_active = 1 ORDER BY name");
+$stmt = $conn->prepare("SELECT * FROM categories WHERE business_id = ? AND is_active = 1 ORDER BY name");
+$stmt->bind_param("i", $bid);
+$stmt->execute();
+$catsQuery = $stmt->get_result();
 while ($c = $catsQuery->fetch_assoc()) {
     $catsList[] = $c;
 }
 
-// Load customers
 $customersList = [];
-$custQuery = $conn->query("SELECT * FROM customers WHERE business_id = $bid AND is_active = 1 ORDER BY name");
+$stmt = $conn->prepare("SELECT * FROM customers WHERE business_id = ? AND is_active = 1 ORDER BY name");
+$stmt->bind_param("i", $bid);
+$stmt->execute();
+$custQuery = $stmt->get_result();
 while ($c = $custQuery->fetch_assoc()) {
     $customersList[] = $c;
 }
@@ -51,25 +66,22 @@ while ($c = $custQuery->fetch_assoc()) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
+<!-- ✅ FIXED - charset FIRST -->
+<meta charset="UTF-8">
 <title>POS · BizFlow</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- 🛒 POS Specific Settings -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <meta name="theme-color" content="#10b981">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="POS">
 <meta name="mobile-web-app-capable" content="yes">
 
-<!-- 🟢 GREEN POS Icons -->
 <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=180">
 <link rel="apple-touch-icon" sizes="120x120" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=120">
 <link rel="apple-touch-icon" sizes="152x152" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=152">
 <link rel="apple-touch-icon" sizes="180x180" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=180">
-
 <link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/shapes/png?seed=POSCart&backgroundColor=10b981&size=32">
-
-<!-- POS Manifest -->
 <link rel="manifest" href="manifest_pos.json">
 
 <?= renderThemeCSS($theme) ?>
@@ -153,11 +165,7 @@ body { background: var(--bg-dark); color: var(--text); font-family: var(--font-b
     font-family: inherit;
 }
 .search-input:focus { outline: none; border-color: var(--primary); }
-@media (max-width: 768px) {
-    .some-card-class {
-        display: none; /* This will completely erase the element on phones */
-    }
-}
+
 .cats-scroll {
     padding: 12px 20px;
     background: var(--bg-card);
@@ -521,6 +529,7 @@ label {
 }
 .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
+/* ✅ FIXED - Mobile styles */
 @media (max-width: 768px) {
     .pos-layout { grid-template-columns: 1fr; }
     .cart-side {
@@ -533,22 +542,63 @@ label {
         transition: right 0.3s;
     }
     .cart-side.open { right: 0; }
+    .stat-chip { display: none; }
+}
+
+/* ✅ NEW - Mobile overlay */
+.cart-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+}
+@media (max-width: 768px) {
+    .cart-overlay.show { display: block; }
+}
+
+/* ✅ NEW - Floating cart button for mobile */
+.fab-cart {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 800;
+    z-index: 998;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+}
+@media (max-width: 768px) {
+    .fab-cart { display: flex; }
 }
 
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-    .card {
-    width: 100%;       /* Takes up full width on mobile */
-    max-width: 400px;  /* Won't grow larger than this on desktop */
-}
 </style>
 </head>
 <body>
 
+<!-- ✅ NEW - Mobile overlay -->
+<div class="cart-overlay" id="cartOverlay"></div>
+
+<!-- ✅ NEW - Floating cart button for mobile -->
+<button class="fab-cart" id="fabCart">
+    🛒 <span id="fabCount">0</span>
+</button>
+
 <div class="pos-layout">
-    
+
     <div class="products-side">
-        
+
         <div class="top-bar">
             <div class="brand">
                 <div class="brand-icon"><?= htmlspecialchars($business['logo_emoji'] ?? '🏪') ?></div>
@@ -557,29 +607,29 @@ label {
                     <div class="brand-sub">POS Terminal</div>
                 </div>
             </div>
-            
+
             <div class="top-actions">
                 <div class="stat-chip">
                     💰 <?= number_format($myStats['revenue'], 0) ?> <?= $currency ?> · 📦 <?= $myStats['count'] ?>
                 </div>
-                
+
                 <div class="user-chip">
                     <div class="user-avatar"><?= strtoupper(substr($_SESSION['user_name'], 0, 1)) ?></div>
                     <?= htmlspecialchars($_SESSION['user_name']) ?>
                 </div>
-                
+
                 <?php if (!in_array($_SESSION['user_role'], ['cashier', 'worker'])): ?>
                     <a href="admin.php" class="icon-btn" title="Admin">⚙️</a>
                 <?php endif; ?>
-                
+
                 <a href="pos_logout.php" class="icon-btn" title="Logout">🚪</a>
             </div>
         </div>
-        
+
         <div class="search-row">
             <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search products..." autofocus>
         </div>
-        
+
         <div class="cats-scroll">
             <button type="button" class="cat-pill active" data-cat="0">🏠 All</button>
             <?php foreach ($catsList as $c): ?>
@@ -588,27 +638,25 @@ label {
                 </button>
             <?php endforeach; ?>
         </div>
-        
+
         <div class="products-grid-wrap">
-            <div class="products-grid" id="productsGrid">
-                <!-- Products will be rendered by JavaScript -->
-            </div>
+            <div class="products-grid" id="productsGrid"></div>
         </div>
     </div>
-    
+
     <div class="cart-side" id="cartSide">
-        
+
         <div class="cart-header">
             <div class="cart-title">🛒 Cart <span id="cartCount" style="color:#9ca3af;font-size:13px;font-weight:600;"></span></div>
             <button type="button" class="cart-clear" id="btnClearCart">Clear</button>
         </div>
-        
+
         <div class="customer-section">
             <button type="button" class="customer-btn" id="customerBtn">
                 👤 Add Customer (optional)
             </button>
         </div>
-        
+
         <div class="cart-items" id="cartItems">
             <div class="cart-empty">
                 <div class="icon">🛒</div>
@@ -616,7 +664,7 @@ label {
                 <p style="font-size:12px;margin-top:8px;">Click products to add</p>
             </div>
         </div>
-        
+
         <div class="cart-totals" id="cartTotals" style="display:none;">
             <div class="total-row">
                 <span>Subtotal</span>
@@ -633,13 +681,12 @@ label {
                 <span id="totalDisplay">0.00 <?= $currency ?></span>
             </div>
         </div>
-        
+
         <div class="checkout-section">
             <div class="payment-methods">
                 <button type="button" class="payment-btn active" data-method="cash">💵 Cash</button>
                 <button type="button" class="payment-btn" data-method="card">💳 Card</button>
             </div>
-            
             <button type="button" class="btn-checkout" id="btnCheckout" disabled>
                 💳 Checkout
             </button>
@@ -662,15 +709,17 @@ label {
     <div class="modal-content" style="max-width:400px;text-align:center;">
         <div class="modal-title" style="text-align:center;">💵 Complete Sale</div>
         <div style="font-size:14px;color:#9ca3af;">Total to pay:</div>
-        <div style="font-size:36px;font-weight:800;color:var(--primary);margin:10px 0 20px;" id="paymentTotal">0.00 <?= $currency ?></div>
-        
+        <!-- ✅ FIXED - Added data-value attribute -->
+        <div style="font-size:36px;font-weight:800;color:var(--primary);margin:10px 0 20px;" 
+             id="paymentTotal" data-value="0">0.00 <?= $currency ?></div>
+
         <label>Cash Received</label>
         <input type="number" step="0.01" class="cash-input" id="cashReceived" placeholder="0.00">
-        
+
         <div class="change-display" id="changeDisplay" style="display:none;">
             Change: <span id="changeAmount">0.00 <?= $currency ?></span>
         </div>
-        
+
         <div style="display:flex;gap:10px;margin-top:20px;">
             <button type="button" class="payment-btn" style="flex:1;" id="btnCancelPayment">Cancel</button>
             <button type="button" class="btn-checkout" style="flex:1;margin:0;" id="btnConfirmPayment">✅ Confirm</button>
@@ -711,7 +760,7 @@ function renderProducts() {
     var grid = document.getElementById('productsGrid');
     var search = document.getElementById('searchInput').value.toLowerCase().trim();
     var html = '';
-    
+
     for (var i = 0; i < ALL_PRODUCTS.length; i++) {
         var p = ALL_PRODUCTS[i];
         var name = (p.name || '').toLowerCase();
@@ -720,26 +769,23 @@ function renderProducts() {
         var cat = parseInt(p.category_id) || 0;
         var stock = parseInt(p.stock_quantity);
         var lowStock = parseInt(p.low_stock_threshold);
-        
-        // Filter by category
+
         if (currentCategory > 0 && cat !== currentCategory) continue;
-        
-        // Filter by search
         if (search && !name.includes(search) && !sku.includes(search) && !barcode.includes(search)) continue;
-        
+
         var outOfStock = stock <= 0;
         var isLow = !outOfStock && stock <= lowStock;
-        
+
         var badgeClass = 'stock-badge';
         var badgeText = stock;
         if (outOfStock) { badgeClass += ' out'; badgeText = 'OUT'; }
         else if (isLow) badgeClass += ' low';
-        
-        var image = p.image_url 
+
+        var image = p.image_url
             ? '<img src="' + escapeHtml(p.image_url) + '" alt="" onerror="this.parentElement.innerHTML=\'📦\'">'
             : '📦';
-        
-        html += '<div class="product-card' + (outOfStock ? ' out-of-stock' : '') + '" data-id="' + p.id + '"' + 
+
+        html += '<div class="product-card' + (outOfStock ? ' out-of-stock' : '') + '" data-id="' + p.id + '"' +
                 (outOfStock ? '' : ' onclick="addToCartById(' + p.id + ')"') + '>';
         html += '<span class="' + badgeClass + '">' + badgeText + '</span>';
         html += '<div class="product-image">' + image + '</div>';
@@ -747,11 +793,11 @@ function renderProducts() {
         html += '<div class="product-price">' + parseFloat(p.selling_price).toFixed(2) + ' ' + CURRENCY + '</div>';
         html += '</div>';
     }
-    
+
     if (html === '') {
         html = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">No products found</div>';
     }
-    
+
     grid.innerHTML = html;
 }
 
@@ -771,9 +817,9 @@ function addToCartById(productId) {
             break;
         }
     }
-    
+
     if (!product) return;
-    
+
     var stock = parseInt(product.stock_quantity);
     var existing = null;
     for (var i = 0; i < cart.length; i++) {
@@ -782,7 +828,7 @@ function addToCartById(productId) {
             break;
         }
     }
-    
+
     if (existing) {
         if (existing.qty >= stock) {
             showToast('⚠️ No more stock', 'error');
@@ -798,7 +844,7 @@ function addToCartById(productId) {
             qty: 1
         });
     }
-    
+
     renderCart();
     if (navigator.vibrate) navigator.vibrate(50);
 }
@@ -845,19 +891,24 @@ function renderCart() {
     var totals = document.getElementById('cartTotals');
     var btn = document.getElementById('btnCheckout');
     var count = document.getElementById('cartCount');
-    
+    var fabCount = document.getElementById('fabCount');
+
     if (cart.length === 0) {
         list.innerHTML = '<div class="cart-empty"><div class="icon">🛒</div><div>Cart is empty</div><p style="font-size:12px;margin-top:8px;">Click products to add</p></div>';
         totals.style.display = 'none';
         btn.disabled = true;
         count.textContent = '';
+        // ✅ NEW - Reset fab count
+        if (fabCount) fabCount.textContent = '0';
         return;
     }
-    
+
     var totalItems = 0;
     for (var i = 0; i < cart.length; i++) totalItems += cart[i].qty;
     count.textContent = '(' + totalItems + ')';
-    
+    // ✅ NEW - Update fab count
+    if (fabCount) fabCount.textContent = totalItems;
+
     var html = '';
     for (var i = 0; i < cart.length; i++) {
         var item = cart[i];
@@ -879,17 +930,17 @@ function renderCart() {
         html += '</div>';
         html += '</div>';
     }
-    
+
     list.innerHTML = html;
     totals.style.display = 'block';
     btn.disabled = false;
-    
+
     var subtotal = 0;
     for (var i = 0; i < cart.length; i++) subtotal += cart[i].price * cart[i].qty;
-    
+
     var tax = TAX_ENABLED ? (subtotal * TAX_RATE / 100) : 0;
     var total = subtotal + tax;
-    
+
     document.getElementById('subtotalDisplay').textContent = subtotal.toFixed(2) + ' ' + CURRENCY;
     if (document.getElementById('taxDisplay')) {
         document.getElementById('taxDisplay').textContent = tax.toFixed(2) + ' ' + CURRENCY;
@@ -902,14 +953,14 @@ function renderCustomers(filter) {
     filter = (filter || '').toLowerCase().trim();
     var list = document.getElementById('customersList');
     var html = '';
-    
+
     for (var i = 0; i < ALL_CUSTOMERS.length; i++) {
         var c = ALL_CUSTOMERS[i];
         var name = (c.name || '').toLowerCase();
         var phone = (c.phone || '').toLowerCase();
-        
+
         if (filter && !name.includes(filter) && !phone.includes(filter)) continue;
-        
+
         html += '<div onclick="selectCustomer(' + c.id + ')" style="background:var(--bg-dark);padding:12px;border-radius:10px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px;">';
         html += '<div style="width:36px;height:36px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;">' + (c.name.charAt(0).toUpperCase()) + '</div>';
         html += '<div>';
@@ -918,9 +969,9 @@ function renderCustomers(filter) {
         html += '</div>';
         html += '</div>';
     }
-    
+
     if (html === '') html = '<div style="text-align:center;padding:20px;color:#6b7280;">No customers found</div>';
-    
+
     list.innerHTML = html;
 }
 
@@ -947,14 +998,17 @@ function closeModal(id) {
 // ===== CHECKOUT =====
 function checkout() {
     if (cart.length === 0) return;
-    
+
     var subtotal = 0;
     for (var i = 0; i < cart.length; i++) subtotal += cart[i].price * cart[i].qty;
     var tax = TAX_ENABLED ? (subtotal * TAX_RATE / 100) : 0;
     var total = subtotal + tax;
-    
+
     if (selectedPayment === 'cash') {
-        document.getElementById('paymentTotal').textContent = total.toFixed(2) + ' ' + CURRENCY;
+        // ✅ FIXED - Store total as data-value
+        var paymentTotalEl = document.getElementById('paymentTotal');
+        paymentTotalEl.textContent = total.toFixed(2) + ' ' + CURRENCY;
+        paymentTotalEl.dataset.value = total;
         document.getElementById('cashReceived').value = '';
         document.getElementById('changeDisplay').style.display = 'none';
         openModal('paymentModal');
@@ -964,11 +1018,12 @@ function checkout() {
     }
 }
 
+// ✅ FIXED - Use data-value instead of parseFloat on text
 function calculateChange() {
-    var total = parseFloat(document.getElementById('paymentTotal').textContent);
+    var total = parseFloat(document.getElementById('paymentTotal').dataset.value) || 0;
     var received = parseFloat(document.getElementById('cashReceived').value) || 0;
     var change = received - total;
-    
+
     if (change >= 0) {
         document.getElementById('changeAmount').textContent = change.toFixed(2) + ' ' + CURRENCY;
         document.getElementById('changeDisplay').style.display = 'block';
@@ -977,15 +1032,16 @@ function calculateChange() {
     }
 }
 
+// ✅ FIXED - Use data-value instead of parseFloat on text
 function confirmPayment() {
-    var total = parseFloat(document.getElementById('paymentTotal').textContent);
+    var total = parseFloat(document.getElementById('paymentTotal').dataset.value) || 0;
     var received = parseFloat(document.getElementById('cashReceived').value) || 0;
-    
+
     if (received < total) {
         showToast('⚠️ Insufficient amount', 'error');
         return;
     }
-    
+
     processSale(total, received, received - total);
 }
 
@@ -999,7 +1055,7 @@ function processSale(total, paid, change) {
         change_amount: change,
         total: total
     };
-    
+
     fetch('pos_action.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -1015,19 +1071,19 @@ function processSale(total, paid, change) {
             showToast('❌ Server error', 'error');
             return;
         }
-        
+
         if (res.success) {
             closeModal('paymentModal');
             document.getElementById('successAmount').textContent = total.toFixed(2) + ' ' + CURRENCY;
             document.getElementById('successInvoice').textContent = res.invoice_number || '';
-            
+
             if (change > 0) {
                 document.getElementById('successChange').style.display = 'block';
                 document.getElementById('successChangeAmount').textContent = change.toFixed(2) + ' ' + CURRENCY;
             } else {
                 document.getElementById('successChange').style.display = 'none';
             }
-            
+
             openModal('successModal');
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         } else {
@@ -1040,13 +1096,10 @@ function processSale(total, paid, change) {
     });
 }
 
+// ✅ FIXED - Simplified newSale
 function newSale() {
-    cart = [];
-    selectedCustomer = null;
     closeModal('successModal');
-    renderCart();
-    document.getElementById('customerBtn').innerHTML = '👤 Add Customer (optional)';
-    setTimeout(function() { location.reload(); }, 500);
+    setTimeout(function() { location.reload(); }, 300);
 }
 
 // ===== TOAST =====
@@ -1060,10 +1113,10 @@ function showToast(msg, type) {
 
 // ===== EVENT LISTENERS =====
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     // Search
     document.getElementById('searchInput').addEventListener('input', renderProducts);
-    
+
     // Categories
     var catPills = document.querySelectorAll('.cat-pill');
     for (var i = 0; i < catPills.length; i++) {
@@ -1074,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderProducts();
         });
     }
-    
+
     // Payment methods
     var payBtns = document.querySelectorAll('.payment-btn');
     for (var i = 0; i < payBtns.length; i++) {
@@ -1087,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedPayment = this.dataset.method;
         });
     }
-    
+
     // Buttons
     document.getElementById('btnClearCart').addEventListener('click', clearCart);
     document.getElementById('btnCheckout').addEventListener('click', checkout);
@@ -1103,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('customerSearch').addEventListener('input', function() {
         renderCustomers(this.value);
     });
-    
+
     // Close modals on backdrop click
     var modals = document.querySelectorAll('.modal');
     for (var i = 0; i < modals.length; i++) {
@@ -1111,10 +1164,24 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target === this) this.classList.remove('show');
         });
     }
-    
+
+    // ✅ NEW - FAB cart button toggle
+    document.getElementById('fabCart').addEventListener('click', function() {
+        var cart = document.getElementById('cartSide');
+        var overlay = document.getElementById('cartOverlay');
+        cart.classList.toggle('open');
+        overlay.classList.toggle('show');
+    });
+
+    // ✅ NEW - Overlay closes cart
+    document.getElementById('cartOverlay').addEventListener('click', function() {
+        document.getElementById('cartSide').classList.remove('open');
+        this.classList.remove('show');
+    });
+
     // Initial render
     renderProducts();
-    
+
     console.log('✅ BizFlow POS Ready');
     console.log('📦 Products loaded:', ALL_PRODUCTS.length);
     console.log('👥 Customers:', ALL_CUSTOMERS.length);
