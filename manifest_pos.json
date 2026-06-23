@@ -1,0 +1,27 @@
+{
+    "name": "BizFlow POS Terminal",
+    "short_name": "POS",
+    "description": "Cashier point of sale terminal",
+    "start_url": "/pos_login.php",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#0a0e1a",
+    "theme_color": "#10b981",
+    "categories": ["business", "finance"],
+    "lang": "en",
+    "icons": [
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=POS&backgroundColor=10b981,34d399&size=192",
+            "sizes": "192x192",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "https://api.dicebear.com/7.x/shapes/svg?seed=POS&backgroundColor=10b981,34d399&size=512",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
