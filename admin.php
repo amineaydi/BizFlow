@@ -3,30 +3,17 @@ session_start();
 require_once 'db.php';
 require_once 'theme.php';
 
-requireLogin();
-if (in_array($_SESSION['user_role'] ?? '', ['cashier', 'worker'])) {
-    header("Location: pos.php");
-    exit;
-}
+requireAdminLogin();
 
 $bid = getBusinessId();
 $uid = getUserId();
 $business = getBusinessInfo();
 $theme = loadCurrentTheme();
-
-if (!$business) {
-    session_destroy();
-    header("Location: login.php");
-    exit;
-}
+$currency = $business['currency_symbol'] ?? 'DT';
 
 $today = date('Y-m-d');
 
-// ========================================
-// 📊 LOAD ALL DATA AT ONCE
-// ========================================
-
-// Today's stats
+// Stats
 $todayStats = $conn->query("
     SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as revenue
     FROM sales WHERE business_id = $bid AND DATE(created_at) = '$today' AND status = 'completed'
@@ -38,53 +25,48 @@ $totalStaff = $conn->query("SELECT COUNT(*) c FROM users WHERE business_id = $bi
 $totalSuppliers = $conn->query("SELECT COUNT(*) c FROM suppliers WHERE business_id = $bid AND is_active = 1")->fetch_assoc()['c'];
 $lowStock = $conn->query("SELECT COUNT(*) c FROM products WHERE business_id = $bid AND stock_quantity <= low_stock_threshold AND is_active = 1")->fetch_assoc()['c'];
 
-// Month stats
 $monthStart = date('Y-m-01');
 $monthStats = $conn->query("
     SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as revenue
     FROM sales WHERE business_id = $bid AND DATE(created_at) >= '$monthStart' AND status = 'completed'
 ")->fetch_assoc();
 
-// Monthly expenses
 $monthExpenses = $conn->query("
     SELECT COALESCE(SUM(amount), 0) t FROM expenses WHERE business_id = $bid AND expense_date >= '$monthStart'
 ")->fetch_assoc()['t'];
 
 $monthProfit = $monthStats['revenue'] - $monthExpenses;
-$currency = $business['currency_symbol'] ?? 'DT';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="<?= $theme['primary_color'] ?>">
-<title><?= htmlspecialchars($business['name']) ?> · Admin · BizFlow</title>
-<link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3b82f6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BizFlow">
-<link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/shapes/svg?seed=BizFlow&backgroundColor=3b82f6&size=180">
-
+<title><?= htmlspecialchars($business['name']) ?> · Admin</title>
+<link rel="manifest" href="manifest.json">
 <?= renderThemeCSS($theme) ?>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
 body {
     background: var(--bg-dark);
     color: var(--text);
     font-family: var(--font-body);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* ===== SIDEBAR ===== */
+/* ===== LAYOUT ===== */
 .layout {
     display: grid;
     grid-template-columns: 260px 1fr;
     min-height: 100vh;
 }
 
+/* ===== SIDEBAR ===== */
 .sidebar {
     background: linear-gradient(180deg, var(--bg-card), #0f1424);
     border-right: 1px solid rgba(255,255,255,0.06);
@@ -93,6 +75,7 @@ body {
     top: 0;
     height: 100vh;
     overflow-y: auto;
+    transition: left 0.3s ease;
 }
 
 .brand {
@@ -119,6 +102,17 @@ body {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .brand-role { font-size: 11px; color: #9ca3af; }
+
+.sidebar-close {
+    display: none;
+    background: rgba(239,68,68,0.1);
+    border: none;
+    color: #ef4444;
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 18px;
+}
 
 .nav-section { margin-bottom: 20px; }
 .nav-title {
@@ -172,25 +166,60 @@ body {
     justify-content: space-between;
     align-items: center;
     position: sticky; top: 0; z-index: 100;
+    gap: 12px;
 }
 
-.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-menu-btn {
+    display: none;
+    background: var(--bg-dark);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: white;
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover { background: var(--primary); }
 
 .page-title {
     font-family: var(--font-heading);
-    font-size: 22px; font-weight: 700;
+    font-size: 22px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .live-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(16,185,129,0.15); color: #10b981;
-    padding: 5px 12px; border-radius: 20px;
-    font-size: 11px; font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16,185,129,0.15);
+    color: #10b981;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
 }
 
 .live-dot {
-    width: 8px; height: 8px; background: #10b981;
-    border-radius: 50%; animation: pulse 2s infinite;
+    width: 8px; height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
@@ -198,17 +227,27 @@ body {
     50% { opacity: 0.5; transform: scale(1.3); }
 }
 
-.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
 
 .quick-stat {
     background: var(--bg-dark);
-    padding: 8px 14px; border-radius: 10px;
-    font-size: 12px; color: #9ca3af;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #9ca3af;
+    white-space: nowrap;
 }
 .quick-stat strong { color: var(--primary); font-size: 14px; }
 
 .user-menu {
-    display: flex; align-items: center; gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     background: var(--bg-dark);
     padding: 6px 14px 6px 6px;
     border-radius: 30px;
@@ -219,23 +258,41 @@ body {
     width: 32px; height: 32px;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 13px;
 }
 
 .user-name { font-size: 13px; font-weight: 600; }
 
 .btn-logout {
-    background: rgba(239,68,68,0.1); color: #ef4444;
+    background: rgba(239,68,68,0.1);
+    color: #ef4444;
     border: 1px solid rgba(239,68,68,0.3);
-    padding: 8px 14px; border-radius: 10px;
-    text-decoration: none; font-size: 12px; font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
 }
+
+/* ===== OVERLAY ===== */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 999;
+}
+.sidebar-overlay.show { display: block; }
 
 /* ===== CONTENT ===== */
 .content { padding: 30px; flex: 1; }
 
-/* TABS */
 .tab-content { display: none; animation: fadeIn 0.3s; }
 .tab-content.active { display: block; }
 
@@ -244,7 +301,7 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* WELCOME */
+/* ===== WELCOME ===== */
 .welcome-banner {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     border-radius: 20px;
@@ -268,7 +325,7 @@ body {
 .welcome-title { font-family: var(--font-heading); font-size: 28px; font-weight: 700; margin-bottom: 6px; }
 .welcome-sub { font-size: 14px; opacity: 0.9; }
 
-/* STATS */
+/* ===== STATS ===== */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -281,9 +338,10 @@ body {
     border: 1px solid rgba(255,255,255,0.06);
     border-radius: 16px;
     padding: 20px;
-    display: flex; gap: 14px; align-items: center;
+    display: flex;
+    gap: 14px;
+    align-items: center;
     transition: 0.2s;
-    position: relative; overflow: hidden;
 }
 
 .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); }
@@ -291,16 +349,19 @@ body {
 .stat-card .icon {
     width: 52px; height: 52px;
     border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
 }
 
-.stat-card .info { flex: 1; }
+.stat-card .info { flex: 1; min-width: 0; }
 .stat-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 .stat-value { font-size: 24px; font-weight: 800; margin-top: 2px; }
 .stat-change { font-size: 11px; color: #10b981; margin-top: 4px; }
 
-/* CARDS */
+/* ===== CARDS ===== */
 .cards-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
 
 .card {
@@ -316,6 +377,8 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .card-title {
@@ -323,7 +386,7 @@ body {
     font-size: 18px; font-weight: 700;
 }
 
-/* TABLE */
+/* ===== TABLE ===== */
 .data-table { width: 100%; border-collapse: collapse; }
 
 .data-table th {
@@ -343,18 +406,22 @@ body {
 
 .data-table tr:hover td { background: rgba(255,255,255,0.02); }
 
-/* BUTTONS */
+/* ===== BUTTONS ===== */
 .btn {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white; border: none;
-    padding: 12px 20px; border-radius: 10px;
-    font-weight: 700; cursor: pointer;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     text-decoration: none;
     display: inline-flex;
-    align-items: center; gap: 8px;
+    align-items: center;
+    gap: 8px;
     transition: 0.2s;
     font-family: inherit;
 }
@@ -365,26 +432,32 @@ body {
 .btn-success { background: #10b981; }
 
 .btn-sm {
-    padding: 6px 12px; border-radius: 8px;
-    font-size: 11px; font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
     border: 1px solid rgba(255,255,255,0.1);
     background: var(--bg-dark);
-    color: white; cursor: pointer;
+    color: white;
+    cursor: pointer;
     margin-right: 4px;
     font-family: inherit;
 }
 
 .btn-sm:hover { border-color: var(--primary); color: var(--primary); }
 
-/* FORMS */
+/* ===== FORMS ===== */
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-group { margin-bottom: 16px; }
 
 .form-group label {
     display: block;
-    font-size: 11px; color: #9ca3af;
-    text-transform: uppercase; letter-spacing: 1px;
-    font-weight: 700; margin-bottom: 8px;
+    font-size: 11px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 8px;
 }
 
 .form-input, .form-select, .form-textarea {
@@ -399,7 +472,8 @@ body {
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-    outline: none; border-color: var(--primary);
+    outline: none;
+    border-color: var(--primary);
 }
 
 .form-textarea { min-height: 80px; resize: vertical; }
@@ -412,7 +486,7 @@ select.form-select {
     padding-right: 40px;
 }
 
-/* MODAL */
+/* ===== MODAL ===== */
 .modal {
     display: none;
     position: fixed;
@@ -457,28 +531,22 @@ select.form-select {
     margin-left: auto;
 }
 
-/* ALERT */
+/* ===== ALERT ===== */
 .alert {
     padding: 14px 18px;
     border-radius: 12px;
     margin-bottom: 20px;
     font-size: 13px;
     font-weight: 600;
-    animation: slideDown 0.3s;
 }
 .alert.success { background: rgba(16,185,129,0.15); color: #86efac; border: 1px solid rgba(16,185,129,0.3); }
 .alert.error { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
 
-@keyframes slideDown {
-    from { transform: translateY(-10px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-/* EMPTY STATE */
+/* ===== EMPTY STATE ===== */
 .empty-state { text-align: center; padding: 60px 20px; color: #6b7280; }
 .empty-icon { font-size: 80px; margin-bottom: 20px; opacity: 0.5; }
 
-/* QUICK ACTIONS */
+/* ===== QUICK ACTIONS ===== */
 .quick-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 
 .action-btn {
@@ -507,7 +575,7 @@ select.form-select {
 .action-icon { font-size: 28px; }
 .action-label { font-size: 12px; font-weight: 700; }
 
-/* SALES LIST */
+/* ===== SALES LIST ===== */
 .sales-list { display: flex; flex-direction: column; gap: 10px; }
 
 .sale-item {
@@ -526,7 +594,9 @@ select.form-select {
     background: rgba(16,185,129,0.15);
     color: #10b981;
     border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 16px;
 }
 
@@ -535,7 +605,7 @@ select.form-select {
 .sale-time { color: #9ca3af; font-size: 11px; }
 .sale-amount { font-weight: 800; color: var(--accent); }
 
-/* CATEGORY BADGE */
+/* ===== BADGES ===== */
 .cat-badge {
     display: inline-block;
     padding: 4px 10px;
@@ -544,7 +614,6 @@ select.form-select {
     font-weight: 700;
 }
 
-/* STATUS BADGES */
 .status-badge {
     display: inline-block;
     padding: 3px 10px;
@@ -558,170 +627,92 @@ select.form-select {
 .status-inactive { background: rgba(239,68,68,0.15); color: #ef4444; }
 .status-low { background: rgba(251,191,36,0.15); color: #fbbf24; }
 
-/* ========== MOBILE NAVIGATION ========== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
-/* Hamburger button (hidden by default) */
-.mobile-menu-btn {
-    display: none;
-    background: var(--bg-card);
-    border: 1px solid rgba(255,255,255,0.06);
-    color: white;
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
-    font-size: 20px;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
-}
+/* ============================================ */
+/* 📱 MOBILE RESPONSIVE - COMPLETE */
+/* ============================================ */
 
-/* Mobile sidebar overlay */
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(8px);
-    z-index: 999;
-    animation: fadeIn 0.2s;
-}
-
-.sidebar-overlay.show {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* ========== TABLET (≤ 1024px) ========== */
 @media (max-width: 1024px) {
-    .layout {
-        grid-template-columns: 1fr;
-    }
+    .layout { grid-template-columns: 1fr; }
     
     .sidebar {
         position: fixed;
-        left: -280px;
+        left: -300px;
         top: 0;
         height: 100vh;
         width: 280px;
         z-index: 1000;
-        transition: left 0.3s ease;
         padding: 20px 16px;
-        overflow-y: auto;
     }
     
     .sidebar.show {
         left: 0;
-        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        box-shadow: 10px 0 40px rgba(0,0,0,0.6);
     }
     
-    .sidebar .nav-item span:not(.nav-icon):not(.nav-badge),
-    .sidebar .brand-text,
-    .sidebar .nav-title {
-        display: block !important;
-    }
-    
-    .sidebar .nav-item {
-        justify-content: flex-start !important;
-        padding: 12px !important;
+    .sidebar-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 16px;
+        right: 16px;
     }
     
     .mobile-menu-btn {
         display: flex;
     }
     
-    .cards-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .content {
-        padding: 20px 16px;
-    }
+    .cards-row { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .content { padding: 20px 16px; }
 }
 
-/* ========== PHONE (≤ 768px) ========== */
 @media (max-width: 768px) {
-    
-    /* Top bar */
     .topbar {
         padding: 12px 14px;
-        flex-wrap: nowrap;
-        gap: 8px;
-    }
-    
-    .topbar-left {
-        flex: 1;
-        min-width: 0;
         gap: 8px;
     }
     
     .page-title {
-        font-size: 16px !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    
-    .live-badge {
-        font-size: 9px;
-        padding: 4px 8px;
-    }
-    
-    .topbar-right {
-        gap: 6px;
-    }
-    
-    .quick-stat {
-        display: none; /* Hide stat on phone */
-    }
-    
-    .user-menu {
-        padding: 4px 8px 4px 4px;
-    }
-    
-    .user-menu .user-name {
-        display: none; /* Hide name on phone, show only avatar */
-    }
-    
-    .btn-logout {
-        padding: 8px 10px;
-        font-size: 14px;
-    }
-    
-    .btn-logout::before {
-        content: '🚪';
-    }
-    
-    .btn-logout span,
-    .btn-logout {
-        font-size: 0;
-    }
-    
-    .btn-logout::before {
         font-size: 16px;
     }
     
-    /* Welcome banner */
+    .live-badge {
+        display: none;
+    }
+    
+    .quick-stat {
+        display: none;
+    }
+    
+    .user-menu .user-name {
+        display: none;
+    }
+    
+    .user-menu {
+        padding: 4px;
+    }
+    
+    .btn-logout {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    
     .welcome-banner {
         padding: 20px;
     }
     
     .welcome-title {
-        font-size: 20px !important;
+        font-size: 20px;
     }
     
     .welcome-sub {
         font-size: 13px;
     }
     
-    /* Stats grid - 2 columns on phone */
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
@@ -739,36 +730,30 @@ select.form-select {
     }
     
     .stat-value {
-        font-size: 18px !important;
+        font-size: 18px;
     }
     
     .stat-label {
         font-size: 9px;
     }
     
-    /* Cards */
     .card {
         padding: 16px;
-        margin-bottom: 14px;
         border-radius: 14px;
+        margin-bottom: 14px;
     }
     
     .card-title {
-        font-size: 16px !important;
+        font-size: 16px;
     }
     
-    .card-head {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    /* Tables - convert to cards on mobile */
+    /* Convert tables to cards on mobile */
     .data-table {
         font-size: 12px;
     }
     
     .data-table thead {
-        display: none; /* Hide table header on mobile */
+        display: none;
     }
     
     .data-table tr {
@@ -784,14 +769,13 @@ select.form-select {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 6px 0;
+        padding: 8px 0;
         border-bottom: 1px solid rgba(255,255,255,0.04);
-        font-size: 13px;
     }
     
     .data-table td:last-child {
         border-bottom: none;
-        margin-top: 8px;
+        padding-top: 10px;
     }
     
     .data-table td::before {
@@ -800,20 +784,9 @@ select.form-select {
         color: #9ca3af;
         font-size: 11px;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
-    /* Buttons */
-    .btn {
-        padding: 11px 16px;
-        font-size: 12px;
-    }
-    
-    .btn-sm {
-        padding: 8px 12px;
-        font-size: 11px;
-    }
-    
-    /* Modal */
     .modal {
         padding: 0;
         align-items: flex-end;
@@ -825,29 +798,13 @@ select.form-select {
         max-height: 95vh;
         border-radius: 20px 20px 0 0;
         padding: 24px 20px;
-        animation: slideUp 0.3s ease;
     }
     
-    @keyframes slideUp {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-    }
-    
-    .modal-title {
-        font-size: 18px;
-    }
-    
-    /* Form */
     .form-input, .form-select, .form-textarea {
         padding: 14px 12px;
-        font-size: 15px; /* Prevent zoom on iOS */
+        font-size: 16px;
     }
     
-    .form-group label {
-        font-size: 10px;
-    }
-    
-    /* Quick actions */
     .quick-actions {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -856,58 +813,19 @@ select.form-select {
         padding: 14px 10px;
     }
     
-    .action-icon {
-        font-size: 24px;
-    }
-    
-    .action-label {
-        font-size: 11px;
-    }
-    
-    /* Sales list */
-    .sale-item {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    .sale-customer {
+    .btn {
+        padding: 11px 16px;
         font-size: 12px;
-    }
-    
-    .sale-amount {
-        font-size: 14px;
-    }
-    
-    /* Alerts */
-    .alert {
-        padding: 12px 14px;
-        font-size: 12px;
-        margin-bottom: 14px;
     }
 }
 
-/* ========== SMALL PHONE (≤ 480px) ========== */
 @media (max-width: 480px) {
     .stats-grid {
         grid-template-columns: 1fr;
     }
     
-    .quick-actions {
-        grid-template-columns: 1fr 1fr;
-    }
-    
     .page-title {
-        font-size: 14px !important;
-    }
-    
-    .user-menu {
-        padding: 4px;
-    }
-    
-    .user-menu .user-avatar {
-        width: 28px;
-        height: 28px;
-        font-size: 11px;
+        font-size: 15px;
     }
     
     .topbar {
@@ -917,27 +835,28 @@ select.form-select {
     .content {
         padding: 14px 12px;
     }
-}
-
-/* ========== TOUCH IMPROVEMENTS ========== */
-@media (hover: none) {
-    .nav-item, .btn, .card, button {
-        -webkit-tap-highlight-color: rgba(59,130,246,0.2);
+    
+    .welcome-banner {
+        padding: 18px;
     }
     
-    .nav-item:active {
-        background: rgba(59,130,246,0.15);
+    .welcome-title {
+        font-size: 18px;
     }
 }
 </style>
-    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 </head>
 <body>
 
 <div class="layout">
     
+    <!-- ===== SIDEBAR OVERLAY ===== -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
     <!-- ===== SIDEBAR ===== -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
+        
+        <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
         
         <div class="brand">
             <div class="brand-icon"><?= htmlspecialchars($business['logo_emoji'] ?? '🏪') ?></div>
@@ -991,10 +910,6 @@ select.form-select {
                 <span class="nav-icon">🏢</span>
                 <span>Suppliers</span>
             </button>
-            <button class="nav-item" onclick="switchTab('purchases', this)">
-                <span class="nav-icon">📥</span>
-                <span>Purchases</span>
-            </button>
         </div>
         
         <div class="nav-section">
@@ -1028,6 +943,7 @@ select.form-select {
         
         <div class="topbar">
             <div class="topbar-left">
+                <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
                 <div class="page-title" id="currentTabTitle">📊 Dashboard</div>
                 <div class="live-badge">
                     <span class="live-dot"></span>
@@ -1041,17 +957,16 @@ select.form-select {
                 </div>
                 
                 <div class="user-menu">
-                    <div class="user-avatar"><?= strtoupper(substr($_SESSION['user_name'], 0, 1)) ?></div>
-                    <span class="user-name"><?= htmlspecialchars($_SESSION['user_name']) ?></span>
+                    <div class="user-avatar"><?= strtoupper(substr($_SESSION['admin_user_name'], 0, 1)) ?></div>
+                    <span class="user-name"><?= htmlspecialchars($_SESSION['admin_user_name']) ?></span>
                 </div>
                 
-                <a href="logout.php" class="btn-logout">🚪 Logout</a>
+                <a href="admin_logout.php" class="btn-logout">🚪</a>
             </div>
         </div>
         
         <div class="content">
             
-            <!-- ===== ALERT (from URL params) ===== -->
             <?php if (isset($_GET['msg'])): ?>
                 <div class="alert success">✅ <?= htmlspecialchars($_GET['msg']) ?></div>
             <?php endif; ?>
@@ -1059,13 +974,13 @@ select.form-select {
                 <div class="alert error">❌ <?= htmlspecialchars($_GET['err']) ?></div>
             <?php endif; ?>
             
-            <!-- ===== TAB: DASHBOARD ===== -->
+            <!-- ===== DASHBOARD TAB ===== -->
             <div class="tab-content active" id="tab-dashboard">
                 
                 <div class="welcome-banner">
                     <div class="welcome-content">
-                        <div class="welcome-title">Welcome back, <?= htmlspecialchars($_SESSION['user_name']) ?>! 👋</div>
-                        <div class="welcome-sub">Here's what's happening at <?= htmlspecialchars($business['name']) ?> today</div>
+                        <div class="welcome-title">Welcome back, <?= htmlspecialchars(explode(' ', $_SESSION['admin_user_name'])[0]) ?>! 👋</div>
+                        <div class="welcome-sub">Here's what's happening today</div>
                     </div>
                 </div>
                 
@@ -1102,7 +1017,7 @@ select.form-select {
                         <div class="info">
                             <div class="stat-label">Low Stock</div>
                             <div class="stat-value"><?= $lowStock ?></div>
-                            <div class="stat-change" style="color:#fbbf24;">Needs attention</div>
+                            <div class="stat-change" style="color:#fbbf24;">Items low</div>
                         </div>
                     </div>
                 </div>
@@ -1176,19 +1091,19 @@ select.form-select {
                             </button>
                             <button class="action-btn" onclick="switchTabByName('reports');">
                                 <div class="action-icon">📊</div>
-                                <div class="action-label">View Reports</div>
+                                <div class="action-label">Reports</div>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- ===== TAB: PRODUCTS ===== -->
+            <!-- ===== PRODUCTS TAB ===== -->
             <div class="tab-content" id="tab-products">
                 <div class="card">
                     <div class="card-head">
                         <div class="card-title">📦 Products (<?= $totalProducts ?>)</div>
-                        <button class="btn" onclick="openModal('productModal')">➕ Add Product</button>
+                        <button class="btn" onclick="openModal('productModal')">➕ Add</button>
                     </div>
                     
                     <?php
@@ -1205,7 +1120,6 @@ select.form-select {
                         <div class="empty-state">
                             <div class="empty-icon">📦</div>
                             <h3>No products yet</h3>
-                            <p style="margin-top:10px;">Click "Add Product" to get started!</p>
                         </div>
                     <?php else: ?>
                         <table class="data-table">
@@ -1213,23 +1127,21 @@ select.form-select {
                                 <tr>
                                     <th>Product</th>
                                     <th>Category</th>
-                                    <th>Cost</th>
                                     <th>Price</th>
                                     <th>Stock</th>
-                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php while ($p = $products->fetch_assoc()): ?>
                                     <tr>
-                                        <td>
+                                        <td data-label="Product">
                                             <strong><?= htmlspecialchars($p['name']) ?></strong>
                                             <?php if ($p['sku']): ?>
                                                 <br><small style="color:#9ca3af;">SKU: <?= htmlspecialchars($p['sku']) ?></small>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
+                                        <td data-label="Category">
                                             <?php if ($p['cat_name']): ?>
                                                 <span class="cat-badge" style="background:<?= $p['cat_color'] ?>20;color:<?= $p['cat_color'] ?>;">
                                                     <?= $p['cat_icon'] ?> <?= htmlspecialchars($p['cat_name']) ?>
@@ -1238,9 +1150,8 @@ select.form-select {
                                                 <small style="color:#6b7280;">-</small>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= number_format($p['cost_price'], 2) ?></td>
-                                        <td><strong><?= number_format($p['selling_price'], 2) ?></strong></td>
-                                        <td>
+                                        <td data-label="Price"><strong><?= number_format($p['selling_price'], 2) ?></strong></td>
+                                        <td data-label="Stock">
                                             <?php
                                             $stockClass = 'status-active';
                                             if ($p['stock_quantity'] <= 0) $stockClass = 'status-inactive';
@@ -1250,12 +1161,7 @@ select.form-select {
                                                 <?= $p['stock_quantity'] ?> <?= $p['unit'] ?>
                                             </span>
                                         </td>
-                                        <td>
-                                            <span class="status-badge <?= $p['is_active'] ? 'status-active' : 'status-inactive' ?>">
-                                                <?= $p['is_active'] ? '● Active' : '○ Hidden' ?>
-                                            </span>
-                                        </td>
-                                        <td>
+                                        <td data-label="Actions">
                                             <button class="btn-sm" onclick='editProduct(<?= json_encode($p) ?>)'>✏️</button>
                                             <button class="btn-sm" onclick="adjustStock(<?= $p['id'] ?>, '<?= addslashes($p['name']) ?>')">📦</button>
                                             <button class="btn-sm" style="color:#ef4444;" onclick="deleteItem('product', <?= $p['id'] ?>, '<?= addslashes($p['name']) ?>')">🗑️</button>
@@ -1268,17 +1174,17 @@ select.form-select {
                 </div>
             </div>
             
-            <!-- ===== TAB: CATEGORIES ===== -->
+            <!-- ===== CATEGORIES TAB ===== -->
             <div class="tab-content" id="tab-categories">
                 <div class="card">
                     <div class="card-head">
                         <div class="card-title">📂 Categories</div>
-                        <button class="btn" onclick="openModal('categoryModal')">➕ Add Category</button>
+                        <button class="btn" onclick="openModal('categoryModal')">➕ Add</button>
                     </div>
                     
                     <?php $cats = $conn->query("SELECT * FROM categories WHERE business_id = $bid ORDER BY name"); ?>
                     
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;">
                         <?php while ($c = $cats->fetch_assoc()): ?>
                             <div style="background:var(--bg-dark);padding:18px;border-radius:14px;border-left:4px solid <?= $c['color'] ?>;">
                                 <div style="font-size:32px;margin-bottom:8px;"><?= htmlspecialchars($c['icon']) ?></div>
@@ -1290,12 +1196,12 @@ select.form-select {
                 </div>
             </div>
             
-            <!-- ===== TAB: CUSTOMERS ===== -->
+            <!-- ===== CUSTOMERS TAB ===== -->
             <div class="tab-content" id="tab-customers">
                 <div class="card">
                     <div class="card-head">
                         <div class="card-title">👥 Customers (<?= $totalCustomers ?>)</div>
-                        <button class="btn" onclick="openModal('customerModal')">➕ Add Customer</button>
+                        <button class="btn" onclick="openModal('customerModal')">➕ Add</button>
                     </div>
                     
                     <?php $customers = $conn->query("SELECT * FROM customers WHERE business_id = $bid AND is_active = 1 ORDER BY name"); ?>
@@ -1308,17 +1214,15 @@ select.form-select {
                     <?php else: ?>
                         <table class="data-table">
                             <thead>
-                                <tr><th>Name</th><th>Phone</th><th>Email</th><th>Points</th><th>Spent</th><th>Actions</th></tr>
+                                <tr><th>Name</th><th>Phone</th><th>Spent</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 <?php while ($c = $customers->fetch_assoc()): ?>
                                     <tr>
-                                        <td><strong><?= htmlspecialchars($c['name']) ?></strong></td>
-                                        <td><?= htmlspecialchars($c['phone'] ?? '-') ?></td>
-                                        <td><?= htmlspecialchars($c['email'] ?? '-') ?></td>
-                                        <td>🎁 <?= $c['loyalty_points'] ?></td>
-                                        <td><strong><?= number_format($c['total_spent'], 0) ?> <?= $currency ?></strong></td>
-                                        <td>
+                                        <td data-label="Name"><strong><?= htmlspecialchars($c['name']) ?></strong></td>
+                                        <td data-label="Phone"><?= htmlspecialchars($c['phone'] ?? '-') ?></td>
+                                        <td data-label="Spent"><strong><?= number_format($c['total_spent'], 0) ?> <?= $currency ?></strong></td>
+                                        <td data-label="Actions">
                                             <button class="btn-sm" style="color:#ef4444;" onclick="deleteItem('customer', <?= $c['id'] ?>, '<?= addslashes($c['name']) ?>')">🗑️</button>
                                         </td>
                                     </tr>
@@ -1329,12 +1233,12 @@ select.form-select {
                 </div>
             </div>
             
-            <!-- ===== TAB: SUPPLIERS ===== -->
+            <!-- ===== SUPPLIERS TAB ===== -->
             <div class="tab-content" id="tab-suppliers">
                 <div class="card">
                     <div class="card-head">
                         <div class="card-title">🏢 Suppliers</div>
-                        <button class="btn" onclick="openModal('supplierModal')">➕ Add Supplier</button>
+                        <button class="btn" onclick="openModal('supplierModal')">➕ Add</button>
                     </div>
                     
                     <?php $suppliers = $conn->query("SELECT * FROM suppliers WHERE business_id = $bid AND is_active = 1 ORDER BY name"); ?>
@@ -1347,17 +1251,15 @@ select.form-select {
                     <?php else: ?>
                         <table class="data-table">
                             <thead>
-                                <tr><th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>Balance</th><th>Actions</th></tr>
+                                <tr><th>Name</th><th>Contact</th><th>Phone</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 <?php while ($s = $suppliers->fetch_assoc()): ?>
                                     <tr>
-                                        <td><strong><?= htmlspecialchars($s['name']) ?></strong></td>
-                                        <td><?= htmlspecialchars($s['contact_person'] ?? '-') ?></td>
-                                        <td><?= htmlspecialchars($s['phone'] ?? '-') ?></td>
-                                        <td><?= htmlspecialchars($s['email'] ?? '-') ?></td>
-                                        <td><?= number_format($s['current_balance'], 2) ?> <?= $currency ?></td>
-                                        <td>
+                                        <td data-label="Name"><strong><?= htmlspecialchars($s['name']) ?></strong></td>
+                                        <td data-label="Contact"><?= htmlspecialchars($s['contact_person'] ?? '-') ?></td>
+                                        <td data-label="Phone"><?= htmlspecialchars($s['phone'] ?? '-') ?></td>
+                                        <td data-label="Actions">
                                             <button class="btn-sm" style="color:#ef4444;" onclick="deleteItem('supplier', <?= $s['id'] ?>, '<?= addslashes($s['name']) ?>')">🗑️</button>
                                         </td>
                                     </tr>
@@ -1368,12 +1270,12 @@ select.form-select {
                 </div>
             </div>
             
-            <!-- ===== TAB: EXPENSES ===== -->
+            <!-- ===== EXPENSES TAB ===== -->
             <div class="tab-content" id="tab-expenses">
                 <div class="card">
                     <div class="card-head">
-                        <div class="card-title">💸 Expenses (This Month: <?= number_format($monthExpenses, 0) ?> <?= $currency ?>)</div>
-                        <button class="btn" onclick="openModal('expenseModal')">➕ Add Expense</button>
+                        <div class="card-title">💸 Expenses (<?= number_format($monthExpenses, 0) ?> <?= $currency ?> this month)</div>
+                        <button class="btn" onclick="openModal('expenseModal')">➕ Add</button>
                     </div>
                     
                     <?php 
@@ -1395,23 +1297,20 @@ select.form-select {
                     <?php else: ?>
                         <table class="data-table">
                             <thead>
-                                <tr><th>Date</th><th>Title</th><th>Category</th><th>Amount</th><th>Method</th><th>Actions</th></tr>
+                                <tr><th>Date</th><th>Title</th><th>Amount</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 <?php while ($e = $expenses->fetch_assoc()): ?>
                                     <tr>
-                                        <td><?= date('M d', strtotime($e['expense_date'])) ?></td>
-                                        <td><strong><?= htmlspecialchars($e['title']) ?></strong></td>
-                                        <td>
+                                        <td data-label="Date"><?= date('M d', strtotime($e['expense_date'])) ?></td>
+                                        <td data-label="Title">
+                                            <strong><?= htmlspecialchars($e['title']) ?></strong>
                                             <?php if ($e['cat_name']): ?>
-                                                <span class="cat-badge" style="background:<?= $e['cat_color'] ?>20;color:<?= $e['cat_color'] ?>;">
-                                                    <?= $e['cat_icon'] ?> <?= htmlspecialchars($e['cat_name']) ?>
-                                                </span>
+                                                <br><small><?= $e['cat_icon'] ?> <?= htmlspecialchars($e['cat_name']) ?></small>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="color:#ef4444;font-weight:800;">-<?= number_format($e['amount'], 2) ?> <?= $currency ?></td>
-                                        <td><small><?= htmlspecialchars($e['payment_method']) ?></small></td>
-                                        <td>
+                                        <td data-label="Amount" style="color:#ef4444;font-weight:800;">-<?= number_format($e['amount'], 2) ?> <?= $currency ?></td>
+                                        <td data-label="Actions">
                                             <button class="btn-sm" style="color:#ef4444;" onclick="deleteItem('expense', <?= $e['id'] ?>, '<?= addslashes($e['title']) ?>')">🗑️</button>
                                         </td>
                                     </tr>
@@ -1422,7 +1321,7 @@ select.form-select {
                 </div>
             </div>
             
-            <!-- ===== TAB: STAFF ===== -->
+            <!-- ===== STAFF TAB ===== -->
             <div class="tab-content" id="tab-staff">
                 <div class="card">
                     <div class="card-head">
@@ -1434,25 +1333,30 @@ select.form-select {
                     
                     <table class="data-table">
                         <thead>
-                            <tr><th>Name</th><th>Role</th><th>Email</th><th>PIN</th><th>Last Login</th><th>Actions</th></tr>
+                            <tr><th>Name</th><th>Role</th><th>PIN</th><th>Actions</th></tr>
                         </thead>
                         <tbody>
                             <?php while ($u = $staff->fetch_assoc()): ?>
                                 <tr>
-                                    <td><strong><?= htmlspecialchars($u['full_name']) ?></strong></td>
-                                    <td><span class="status-badge status-active"><?= htmlspecialchars($u['role']) ?></span></td>
-                                    <td><?= htmlspecialchars($u['email'] ?? '-') ?></td>
-                                    <td>
+                                    <td data-label="Name">
+                                        <strong><?= htmlspecialchars($u['full_name']) ?></strong>
+                                        <?php if ($u['email']): ?>
+                                            <br><small style="color:#9ca3af;"><?= htmlspecialchars($u['email']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td data-label="Role">
+                                        <span class="status-badge status-active"><?= htmlspecialchars($u['role']) ?></span>
+                                    </td>
+                                    <td data-label="PIN">
                                         <?php if ($u['pin']): ?>
-                                            <code style="background:var(--bg-dark);padding:4px 10px;border-radius:6px;font-size:14px;color:var(--primary);font-weight:700;">
+                                            <code style="background:var(--bg-dark);padding:6px 12px;border-radius:8px;font-size:14px;color:var(--primary);font-weight:700;">
                                                 <?= htmlspecialchars($u['pin']) ?>
                                             </code>
                                         <?php else: ?>
                                             <small style="color:#6b7280;">No PIN</small>
                                         <?php endif; ?>
                                     </td>
-                                    <td><small style="color:#9ca3af;"><?= $u['last_login'] ? date('M d H:i', strtotime($u['last_login'])) : 'Never' ?></small></td>
-                                    <td>
+                                    <td data-label="Actions">
                                         <?php if ($u['role'] !== 'owner' || $u['id'] != $uid): ?>
                                             <button class="btn-sm" onclick="resetPin(<?= $u['id'] ?>, '<?= addslashes($u['full_name']) ?>')">🔑</button>
                                             <button class="btn-sm" style="color:#ef4444;" onclick="deleteItem('staff', <?= $u['id'] ?>, '<?= addslashes($u['full_name']) ?>')">🗑️</button>
@@ -1467,15 +1371,14 @@ select.form-select {
                 </div>
             </div>
             
-            <!-- ===== TAB: SETTINGS ===== -->
+            <!-- ===== SETTINGS TAB ===== -->
             <div class="tab-content" id="tab-settings">
+                <?php $settings = $conn->query("SELECT * FROM business_settings WHERE business_id = $bid")->fetch_assoc(); ?>
                 
                 <div class="card">
                     <div class="card-head">
                         <div class="card-title">⚙️ Business Settings</div>
                     </div>
-                    
-                    <?php $settings = $conn->query("SELECT * FROM business_settings WHERE business_id = $bid")->fetch_assoc(); ?>
                     
                     <form method="POST" action="admin_action.php">
                         <input type="hidden" name="action" value="save_settings">
@@ -1488,7 +1391,7 @@ select.form-select {
                                 <input type="text" name="business_name" class="form-input" value="<?= htmlspecialchars($business['name']) ?>" required>
                             </div>
                             <div class="form-group">
-                                <label>Currency Symbol</label>
+                                <label>Currency</label>
                                 <input type="text" name="currency" class="form-input" value="<?= htmlspecialchars($business['currency_symbol']) ?>">
                             </div>
                         </div>
@@ -1511,7 +1414,7 @@ select.form-select {
                         
                         <hr style="margin:20px 0;border:none;border-top:1px solid rgba(255,255,255,0.06);">
                         
-                        <h4 style="margin-bottom:15px;font-family:var(--font-heading);">💰 Tax Settings</h4>
+                        <h4 style="margin-bottom:15px;font-family:var(--font-heading);">💰 Tax & Receipts</h4>
                         
                         <div class="form-row">
                             <div class="form-group">
@@ -1527,22 +1430,18 @@ select.form-select {
                         <div class="form-group">
                             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
                                 <input type="checkbox" name="tax_enabled" <?= $settings['tax_enabled'] ? 'checked' : '' ?>>
-                                Enable Tax on Sales
+                                Enable Tax
                             </label>
                         </div>
                         
-                        <hr style="margin:20px 0;border:none;border-top:1px solid rgba(255,255,255,0.06);">
-                        
-                        <h4 style="margin-bottom:15px;font-family:var(--font-heading);">🧾 Receipt</h4>
-                        
                         <div class="form-group">
                             <label>Receipt Header</label>
-                            <textarea name="receipt_header" class="form-textarea" placeholder="Thank you for shopping with us!"><?= htmlspecialchars($settings['receipt_header'] ?? '') ?></textarea>
+                            <textarea name="receipt_header" class="form-textarea"><?= htmlspecialchars($settings['receipt_header'] ?? '') ?></textarea>
                         </div>
                         
                         <div class="form-group">
                             <label>Receipt Footer</label>
-                            <textarea name="receipt_footer" class="form-textarea" placeholder="Visit us again!"><?= htmlspecialchars($settings['receipt_footer'] ?? '') ?></textarea>
+                            <textarea name="receipt_footer" class="form-textarea"><?= htmlspecialchars($settings['receipt_footer'] ?? '') ?></textarea>
                         </div>
                         
                         <button type="submit" class="btn">💾 Save Settings</button>
@@ -1551,7 +1450,7 @@ select.form-select {
                 
                 <div class="card">
                     <div class="card-head">
-                        <div class="card-title">🔒 Change Your Password</div>
+                        <div class="card-title">🔒 Change Password</div>
                     </div>
                     
                     <form method="POST" action="admin_action.php">
@@ -1568,7 +1467,7 @@ select.form-select {
                                 <input type="password" name="new_password" class="form-input" minlength="6" required>
                             </div>
                             <div class="form-group">
-                                <label>Confirm Password</label>
+                                <label>Confirm</label>
                                 <input type="password" name="confirm_password" class="form-input" minlength="6" required>
                             </div>
                         </div>
@@ -1578,33 +1477,23 @@ select.form-select {
                 </div>
             </div>
             
-            <!-- ===== OTHER TABS PLACEHOLDER ===== -->
+            <!-- Other tabs placeholders -->
             <div class="tab-content" id="tab-sales">
                 <div class="card">
-                    <div class="card-title">💰 All Sales</div>
+                    <div class="card-title">💰 Sales History</div>
                     <div class="empty-state">
                         <div class="empty-icon">📊</div>
-                        <p>Sales history will appear here</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="tab-purchases">
-                <div class="card">
-                    <div class="card-title">📥 Purchases</div>
-                    <div class="empty-state">
-                        <div class="empty-icon">📦</div>
-                        <p>Stock purchases will appear here</p>
+                        <p>Coming soon!</p>
                     </div>
                 </div>
             </div>
             
             <div class="tab-content" id="tab-reports">
                 <div class="card">
-                    <div class="card-title">📈 Reports</div>
+                    <div class="card-title">📈 Reports & Analytics</div>
                     <div class="empty-state">
                         <div class="empty-icon">📊</div>
-                        <p>Beautiful charts coming here</p>
+                        <p>Beautiful charts coming soon!</p>
                     </div>
                 </div>
             </div>
@@ -1623,7 +1512,7 @@ select.form-select {
             <button class="close-btn" onclick="closeModal('productModal')">✕</button>
         </div>
         
-        <form method="POST" action="admin_action.php" id="productForm">
+        <form method="POST" action="admin_action.php">
             <input type="hidden" name="action" value="add_product" id="productAction">
             <input type="hidden" name="product_id" id="productId">
             
@@ -1664,7 +1553,7 @@ select.form-select {
             
             <div class="form-row">
                 <div class="form-group">
-                    <label>Stock Quantity</label>
+                    <label>Stock</label>
                     <input type="number" name="stock_quantity" class="form-input" id="productStock" value="0">
                 </div>
                 <div class="form-group">
@@ -1685,12 +1574,12 @@ select.form-select {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Image URL (optional)</label>
+                    <label>Image URL</label>
                     <input type="url" name="image_url" class="form-input" id="productImage" placeholder="https://...">
                 </div>
             </div>
             
-            <button type="submit" class="btn">💾 Save Product</button>
+            <button type="submit" class="btn" style="width:100%;">💾 Save Product</button>
         </form>
     </div>
 </div>
@@ -1713,7 +1602,7 @@ select.form-select {
             
             <div class="form-row">
                 <div class="form-group">
-                    <label>Icon (Emoji)</label>
+                    <label>Icon</label>
                     <input type="text" name="icon" class="form-input" value="📦" maxlength="2">
                 </div>
                 <div class="form-group">
@@ -1722,7 +1611,7 @@ select.form-select {
                 </div>
             </div>
             
-            <button type="submit" class="btn">💾 Save</button>
+            <button type="submit" class="btn" style="width:100%;">💾 Save</button>
         </form>
     </div>
 </div>
@@ -1759,12 +1648,7 @@ select.form-select {
                 <input type="text" name="address" class="form-input">
             </div>
             
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea name="notes" class="form-textarea"></textarea>
-            </div>
-            
-            <button type="submit" class="btn">💾 Save Customer</button>
+            <button type="submit" class="btn" style="width:100%;">💾 Save Customer</button>
         </form>
     </div>
 </div>
@@ -1782,7 +1666,7 @@ select.form-select {
             
             <div class="form-row">
                 <div class="form-group">
-                    <label>Company Name *</label>
+                    <label>Company *</label>
                     <input type="text" name="name" class="form-input" required>
                 </div>
                 <div class="form-group">
@@ -1807,7 +1691,7 @@ select.form-select {
                 <input type="text" name="address" class="form-input">
             </div>
             
-            <button type="submit" class="btn">💾 Save Supplier</button>
+            <button type="submit" class="btn" style="width:100%;">💾 Save</button>
         </form>
     </div>
 </div>
@@ -1853,22 +1737,21 @@ select.form-select {
                     <input type="date" name="expense_date" class="form-input" value="<?= date('Y-m-d') ?>">
                 </div>
                 <div class="form-group">
-                    <label>Payment Method</label>
+                    <label>Payment</label>
                     <select name="payment_method" class="form-select">
                         <option value="cash">💵 Cash</option>
                         <option value="card">💳 Card</option>
-                        <option value="bank">🏦 Bank Transfer</option>
-                        <option value="other">📝 Other</option>
+                        <option value="bank">🏦 Bank</option>
                     </select>
                 </div>
             </div>
             
             <div class="form-group">
-                <label>Vendor / Paid To</label>
+                <label>Vendor</label>
                 <input type="text" name="vendor" class="form-input">
             </div>
             
-            <button type="submit" class="btn">💾 Save Expense</button>
+            <button type="submit" class="btn" style="width:100%;">💾 Save Expense</button>
         </form>
     </div>
 </div>
@@ -1877,7 +1760,7 @@ select.form-select {
 <div class="modal" id="staffModal">
     <div class="modal-content">
         <div style="display:flex;align-items:center;margin-bottom:20px;">
-            <div class="modal-title">👤 Add Staff Member</div>
+            <div class="modal-title">👤 Add Staff</div>
             <button class="close-btn" onclick="closeModal('staffModal')">✕</button>
         </div>
         
@@ -1895,18 +1778,17 @@ select.form-select {
                     <select name="role" class="form-select">
                         <option value="cashier">💼 Cashier</option>
                         <option value="manager">👨‍💼 Manager</option>
-                        <option value="worker">👤 Worker</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>PIN (4 digits, leave empty for auto)</label>
-                    <input type="text" name="pin" class="form-input" maxlength="10" placeholder="Auto-generate">
+                    <label>PIN (auto if empty)</label>
+                    <input type="text" name="pin" class="form-input" maxlength="10">
                 </div>
             </div>
             
             <div class="form-row">
                 <div class="form-group">
-                    <label>Email (for password login)</label>
+                    <label>Email</label>
                     <input type="email" name="email" class="form-input">
                 </div>
                 <div class="form-group">
@@ -1916,16 +1798,16 @@ select.form-select {
             </div>
             
             <div class="form-group">
-                <label>Password (if using email login)</label>
-                <input type="text" name="password" class="form-input" placeholder="Leave empty if PIN only">
+                <label>Password (optional)</label>
+                <input type="text" name="password" class="form-input" placeholder="For email login">
             </div>
             
-            <button type="submit" class="btn">💾 Add Staff</button>
+            <button type="submit" class="btn" style="width:100%;">💾 Add Staff</button>
         </form>
     </div>
 </div>
 
-<!-- STOCK ADJUSTMENT MODAL -->
+<!-- STOCK MODAL -->
 <div class="modal" id="stockModal">
     <div class="modal-content" style="max-width:400px;">
         <div style="display:flex;align-items:center;margin-bottom:20px;">
@@ -1943,8 +1825,8 @@ select.form-select {
                 <div class="form-group">
                     <label>Type</label>
                     <select name="type" class="form-select">
-                        <option value="in">📥 Add Stock (In)</option>
-                        <option value="out">📤 Remove Stock (Out)</option>
+                        <option value="in">📥 Add</option>
+                        <option value="out">📤 Remove</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1955,44 +1837,58 @@ select.form-select {
             
             <div class="form-group">
                 <label>Reason</label>
-                <input type="text" name="reason" class="form-input" placeholder="e.g. Restock, damaged, etc.">
+                <input type="text" name="reason" class="form-input" placeholder="e.g. Restock">
             </div>
             
-            <button type="submit" class="btn">💾 Update Stock</button>
+            <button type="submit" class="btn" style="width:100%;">💾 Update</button>
         </form>
     </div>
 </div>
 
-<!-- DELETE CONFIRMATION MODAL -->
+<!-- DELETE MODAL -->
 <div class="modal" id="deleteModal">
     <div class="modal-content" style="max-width:400px;">
         <div class="modal-title" style="color:#ef4444;">🗑️ Confirm Delete</div>
-        <p style="color:#9ca3af;margin:15px 0;">Are you sure you want to delete <strong id="deleteName"></strong>?</p>
+        <p style="color:#9ca3af;margin:15px 0;">Delete <strong id="deleteName"></strong>?</p>
         
-        <form method="POST" action="admin_action.php" id="deleteForm">
+        <form method="POST" action="admin_action.php">
             <input type="hidden" name="action" id="deleteAction">
-            <input type="hidden" name="" id="deleteIdInput">
+            <input type="hidden" id="deleteIdInput">
             
             <div style="display:flex;gap:10px;">
                 <button type="button" onclick="closeModal('deleteModal')" class="btn" style="flex:1;background:#6b7280;">Cancel</button>
-                <button type="submit" class="btn btn-danger" style="flex:1;">Yes, Delete</button>
+                <button type="submit" class="btn btn-danger" style="flex:1;">Delete</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-// ===== TAB SWITCHING =====
+// ===== MOBILE SIDEBAR =====
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    sidebar.classList.toggle('show');
+    overlay.classList.toggle('show');
+    
+    document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : '';
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('show');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// ===== TABS =====
 function switchTab(tabName, button) {
-    // Update sidebar
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
     if (button) button.classList.add('active');
     
-    // Show content
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-' + tabName).classList.add('active');
     
-    // Update title
     const titles = {
         'dashboard': '📊 Dashboard',
         'sales': '💰 All Sales',
@@ -2000,23 +1896,23 @@ function switchTab(tabName, button) {
         'products': '📦 Products',
         'categories': '📂 Categories',
         'suppliers': '🏢 Suppliers',
-        'purchases': '📥 Purchases',
         'expenses': '💸 Expenses',
         'reports': '📈 Reports',
-        'staff': '👨‍💼 Staff & PINs',
+        'staff': '👨‍💼 Staff',
         'settings': '⚙️ Settings'
     };
     document.getElementById('currentTabTitle').textContent = titles[tabName] || 'Dashboard';
     
-    // Update URL without reload
     history.pushState({}, '', '?tab=' + tabName);
-    
-    // Scroll to top
     window.scrollTo(0, 0);
+    
+    // Close sidebar on mobile
+    if (window.innerWidth <= 1024) {
+        setTimeout(closeSidebar, 200);
+    }
 }
 
 function switchTabByName(tabName) {
-    // Find and click the right nav item
     document.querySelectorAll('.nav-item').forEach(item => {
         const onclick = item.getAttribute('onclick') || '';
         if (onclick.includes(`'${tabName}'`)) {
@@ -2034,14 +1930,13 @@ function closeModal(id) {
     document.getElementById(id).classList.remove('show');
 }
 
-// Close modal on outside click
 document.querySelectorAll('.modal').forEach(m => {
     m.addEventListener('click', e => {
         if (e.target === m) closeModal(m.id);
     });
 });
 
-// ===== EDIT PRODUCT =====
+// ===== PRODUCT EDIT =====
 function editProduct(p) {
     document.getElementById('productAction').value = 'edit_product';
     document.getElementById('productId').value = p.id;
@@ -2055,11 +1950,10 @@ function editProduct(p) {
     document.getElementById('productUnit').value = p.unit;
     document.getElementById('productImage').value = p.image_url || '';
     document.getElementById('productModalTitle').textContent = '✏️ Edit Product';
-    
     openModal('productModal');
 }
 
-// ===== ADJUST STOCK =====
+// ===== STOCK ADJUST =====
 function adjustStock(productId, name) {
     document.getElementById('stockProductId').value = productId;
     document.getElementById('stockProductName').textContent = name;
@@ -2081,7 +1975,7 @@ function resetPin(userId, name) {
     form.submit();
 }
 
-// ===== DELETE ITEM =====
+// ===== DELETE =====
 function deleteItem(type, id, name) {
     const actions = {
         'product': 'delete_product',
@@ -2092,7 +1986,7 @@ function deleteItem(type, id, name) {
         'staff': 'delete_staff'
     };
     
-    const fieldNames = {
+    const fields = {
         'product': 'product_id',
         'category': 'category_id',
         'customer': 'customer_id',
@@ -2105,51 +1999,29 @@ function deleteItem(type, id, name) {
     document.getElementById('deleteName').textContent = name;
     
     const input = document.getElementById('deleteIdInput');
-    input.name = fieldNames[type];
+    input.name = fields[type];
     input.value = id;
     
     openModal('deleteModal');
 }
 
-// ===== INITIAL TAB FROM URL =====
+// ===== KEYBOARD =====
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.show').forEach(m => closeModal(m.id));
+        closeSidebar();
+    }
+});
+
+// ===== URL TAB =====
 const urlParams = new URLSearchParams(window.location.search);
 const initialTab = urlParams.get('tab');
 if (initialTab) {
     setTimeout(() => switchTabByName(initialTab), 100);
 }
 
-// ===== PUSHER REAL-TIME =====
-const BUSINESS_ID = <?= $bid ?>;
-const USER_NAME = '<?= addslashes($_SESSION['user_name']) ?>';
-
-const pusher = new Pusher('692a2afe9b9c204f0136', { cluster: 'eu' });
-
-const salesChannel = pusher.subscribe(`business-${BUSINESS_ID}-sales`);
-salesChannel.bind('new-sale', (data) => {
-    showToast('💰 New Sale!', `${data.amount} ${data.currency || 'DT'} by ${data.cashier}`);
-});
-
-function showToast(title, body) {
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed; top: 80px; right: 20px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white; padding: 16px 22px;
-        border-radius: 14px; font-weight: 600;
-        z-index: 9999;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        max-width: 350px;
-        animation: slideIn 0.4s;
-    `;
-    toast.innerHTML = `<strong>${title}</strong><br><small style="opacity:0.9;">${body}</small>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
-}
-
 console.log('🟢 BizFlow Admin Loaded');
 </script>
 
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-<script src="pwa.js"></script>
 </body>
 </html>
