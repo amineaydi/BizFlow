@@ -153,7 +153,11 @@ body { background: var(--bg-dark); color: var(--text); font-family: var(--font-b
     font-family: inherit;
 }
 .search-input:focus { outline: none; border-color: var(--primary); }
-
+@media (max-width: 768px) {
+    .some-card-class {
+        display: none; /* This will completely erase the element on phones */
+    }
+}
 .cats-scroll {
     padding: 12px 20px;
     background: var(--bg-card);
