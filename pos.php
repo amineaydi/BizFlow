@@ -12,7 +12,6 @@ $business = getBusinessInfo();
 $theme = loadCurrentTheme();
 $currency = $business['currency_symbol'] ?? 'DT';
 
-// ✅ FIXED - Prepared statements
 $stmt = $conn->prepare("SELECT * FROM business_settings WHERE business_id = ?");
 $stmt->bind_param("i", $bid);
 $stmt->execute();
@@ -31,7 +30,6 @@ $stmt->bind_param("iis", $bid, $uid, $today);
 $stmt->execute();
 $myStats = $stmt->get_result()->fetch_assoc();
 
-// ✅ FIXED - Prepared statements for all queries
 $productsList = [];
 $stmt = $conn->prepare("
     SELECT * FROM products 
@@ -64,9 +62,8 @@ while ($c = $custQuery->fetch_assoc()) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
-<!-- ✅ FIXED - charset FIRST -->
 <meta charset="UTF-8">
 <title>POS · BizFlow</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -88,6 +85,14 @@ while ($c = $custQuery->fetch_assoc()) {
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
 body { background: var(--bg-dark); color: var(--text); font-family: var(--font-body); height: 100vh; overflow: hidden; }
+
+/* ✅ RTL Support */
+[dir="rtl"] { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+[dir="rtl"] .cart-side { border-left: none; border-right: 1px solid rgba(255,255,255,0.06); }
+[dir="rtl"] .cat-pill { margin-right: 0; margin-left: 8px; }
+[dir="rtl"] .cart-item-remove { padding: 0 4px; }
+[dir="rtl"] .user-chip { padding: 6px 6px 6px 14px; }
+[dir="rtl"] .toast { right: auto; left: 20px; }
 
 .pos-layout { display: grid; grid-template-columns: 1fr 400px; height: 100vh; }
 
@@ -146,6 +151,65 @@ body { background: var(--bg-dark); color: var(--text); font-family: var(--font-b
     font-size: 16px; text-decoration: none;
 }
 .icon-btn:hover { background: var(--primary); }
+
+/* ✅ Language Switcher */
+.lang-switcher {
+    position: relative;
+}
+
+.lang-btn {
+    background: var(--bg-dark);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 6px 12px;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.lang-btn:hover { background: var(--primary); }
+
+.lang-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 6px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 6px;
+    z-index: 100;
+    min-width: 160px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+[dir="rtl"] .lang-dropdown { right: auto; left: 0; }
+.lang-dropdown.show { display: block; }
+
+.lang-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    border: none;
+    background: none;
+    width: 100%;
+    font-family: inherit;
+}
+.lang-option:hover { background: rgba(255,255,255,0.06); }
+.lang-option.active { background: rgba(var(--primary-rgb, 59,130,246), 0.15); color: var(--primary); }
+.lang-option .flag { font-size: 20px; }
+.lang-option .check { margin-left: auto; font-size: 14px; }
+[dir="rtl"] .lang-option .check { margin-left: 0; margin-right: auto; }
 
 .search-row {
     padding: 16px 20px;
@@ -254,6 +318,7 @@ body { background: var(--bg-dark); color: var(--text); font-family: var(--font-b
     font-size: 10px;
     font-weight: 700;
 }
+[dir="rtl"] .stock-badge { right: auto; left: 8px; }
 .stock-badge.low { background: rgba(251,191,36,0.9); color: #000; }
 .stock-badge.out { background: rgba(239,68,68,0.9); }
 
@@ -526,10 +591,15 @@ label {
     font-weight: 700;
     z-index: 99999;
     max-width: 350px;
+    animation: toastIn 0.3s ease;
 }
 .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
-/* ✅ FIXED - Mobile styles */
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
     .pos-layout { grid-template-columns: 1fr; }
     .cart-side {
@@ -542,10 +612,11 @@ label {
         transition: right 0.3s;
     }
     .cart-side.open { right: 0; }
+    [dir="rtl"] .cart-side { right: auto; left: -100%; }
+    [dir="rtl"] .cart-side.open { left: 0; }
     .stat-chip { display: none; }
 }
 
-/* ✅ NEW - Mobile overlay */
 .cart-overlay {
     display: none;
     position: fixed;
@@ -557,7 +628,6 @@ label {
     .cart-overlay.show { display: block; }
 }
 
-/* ✅ NEW - Floating cart button for mobile */
 .fab-cart {
     display: none;
     position: fixed;
@@ -577,6 +647,7 @@ label {
     gap: 8px;
     font-family: inherit;
 }
+[dir="rtl"] .fab-cart { right: auto; left: 20px; }
 @media (max-width: 768px) {
     .fab-cart { display: flex; }
 }
@@ -587,10 +658,8 @@ label {
 </head>
 <body>
 
-<!-- ✅ NEW - Mobile overlay -->
 <div class="cart-overlay" id="cartOverlay"></div>
 
-<!-- ✅ NEW - Floating cart button for mobile -->
 <button class="fab-cart" id="fabCart">
     🛒 <span id="fabCount">0</span>
 </button>
@@ -604,13 +673,38 @@ label {
                 <div class="brand-icon"><?= htmlspecialchars($business['logo_emoji'] ?? '🏪') ?></div>
                 <div>
                     <div class="brand-name"><?= htmlspecialchars($business['name']) ?></div>
-                    <div class="brand-sub">POS Terminal</div>
+                    <div class="brand-sub" data-lang="pos_terminal">POS Terminal</div>
                 </div>
             </div>
 
             <div class="top-actions">
                 <div class="stat-chip">
                     💰 <?= number_format($myStats['revenue'], 0) ?> <?= $currency ?> · 📦 <?= $myStats['count'] ?>
+                </div>
+
+                <!-- ✅ Language Switcher -->
+                <div class="lang-switcher">
+                    <button class="lang-btn" id="langToggle">
+                        <span id="currentLangFlag">🇬🇧</span>
+                        <span id="currentLangCode">EN</span>
+                    </button>
+                    <div class="lang-dropdown" id="langDropdown">
+                        <button class="lang-option active" data-lang-switch="en">
+                            <span class="flag">🇬🇧</span>
+                            <span>English</span>
+                            <span class="check">✓</span>
+                        </button>
+                        <button class="lang-option" data-lang-switch="ar">
+                            <span class="flag">🇸🇦</span>
+                            <span>العربية</span>
+                            <span class="check">✓</span>
+                        </button>
+                        <button class="lang-option" data-lang-switch="fr">
+                            <span class="flag">🇫🇷</span>
+                            <span>Français</span>
+                            <span class="check">✓</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="user-chip">
@@ -622,16 +716,16 @@ label {
                     <a href="admin.php" class="icon-btn" title="Admin">⚙️</a>
                 <?php endif; ?>
 
-                <a href="pos_logout.php" class="icon-btn" title="Logout">🚪</a>
+                <a href="pos_logout.php" class="icon-btn" title="Logout" id="logoutBtn">🚪</a>
             </div>
         </div>
 
         <div class="search-row">
-            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search products..." autofocus>
+            <input type="text" id="searchInput" class="search-input" data-lang-placeholder="search_products" placeholder="🔍 Search products..." autofocus>
         </div>
 
         <div class="cats-scroll">
-            <button type="button" class="cat-pill active" data-cat="0">🏠 All</button>
+            <button type="button" class="cat-pill active" data-cat="0">🏠 <span data-lang="all">All</span></button>
             <?php foreach ($catsList as $c): ?>
                 <button type="button" class="cat-pill" data-cat="<?= intval($c['id']) ?>">
                     <?= htmlspecialchars($c['icon'] ?? '📦') ?> <?= htmlspecialchars($c['name']) ?>
@@ -647,12 +741,12 @@ label {
     <div class="cart-side" id="cartSide">
 
         <div class="cart-header">
-            <div class="cart-title">🛒 Cart <span id="cartCount" style="color:#9ca3af;font-size:13px;font-weight:600;"></span></div>
-            <button type="button" class="cart-clear" id="btnClearCart">Clear</button>
+            <div class="cart-title">🛒 <span data-lang="cart">Cart</span> <span id="cartCount" style="color:#9ca3af;font-size:13px;font-weight:600;"></span></div>
+            <button type="button" class="cart-clear" id="btnClearCart" data-lang="clear">Clear</button>
         </div>
 
         <div class="customer-section">
-            <button type="button" class="customer-btn" id="customerBtn">
+            <button type="button" class="customer-btn" id="customerBtn" data-lang="add_customer">
                 👤 Add Customer (optional)
             </button>
         </div>
@@ -660,35 +754,35 @@ label {
         <div class="cart-items" id="cartItems">
             <div class="cart-empty">
                 <div class="icon">🛒</div>
-                <div>Cart is empty</div>
-                <p style="font-size:12px;margin-top:8px;">Click products to add</p>
+                <div data-lang="cart_empty">Cart is empty</div>
+                <p style="font-size:12px;margin-top:8px;" data-lang="click_to_add">Click products to add</p>
             </div>
         </div>
 
         <div class="cart-totals" id="cartTotals" style="display:none;">
             <div class="total-row">
-                <span>Subtotal</span>
+                <span data-lang="subtotal">Subtotal</span>
                 <span id="subtotalDisplay">0.00 <?= $currency ?></span>
             </div>
             <?php if ($taxEnabled && $taxRate > 0): ?>
                 <div class="total-row">
-                    <span>Tax (<?= $taxRate ?>%)</span>
+                    <span><span data-lang="tax">Tax</span> (<?= $taxRate ?>%)</span>
                     <span id="taxDisplay">0.00 <?= $currency ?></span>
                 </div>
             <?php endif; ?>
             <div class="total-row grand">
-                <span>TOTAL</span>
+                <span data-lang="total">TOTAL</span>
                 <span id="totalDisplay">0.00 <?= $currency ?></span>
             </div>
         </div>
 
         <div class="checkout-section">
             <div class="payment-methods">
-                <button type="button" class="payment-btn active" data-method="cash">💵 Cash</button>
-                <button type="button" class="payment-btn" data-method="card">💳 Card</button>
+                <button type="button" class="payment-btn active" data-method="cash">💵 <span data-lang="cash">Cash</span></button>
+                <button type="button" class="payment-btn" data-method="card">💳 <span data-lang="card">Card</span></button>
             </div>
             <button type="button" class="btn-checkout" id="btnCheckout" disabled>
-                💳 Checkout
+                💳 <span data-lang="checkout">Checkout</span>
             </button>
         </div>
     </div>
@@ -697,32 +791,31 @@ label {
 <!-- CUSTOMER MODAL -->
 <div class="modal" id="customerModal">
     <div class="modal-content">
-        <div class="modal-title">👤 Select Customer</div>
-        <input type="text" class="form-input" placeholder="🔍 Search..." id="customerSearch" style="margin-bottom:15px;">
+        <div class="modal-title">👤 <span data-lang="select_customer">Select Customer</span></div>
+        <input type="text" class="form-input" data-lang-placeholder="search" placeholder="🔍 Search..." id="customerSearch" style="margin-bottom:15px;">
         <div id="customersList" style="max-height:300px;overflow-y:auto;"></div>
-        <button type="button" class="btn-checkout" style="margin-top:15px;background:rgba(255,255,255,0.1);" id="btnCloseCustomer">Cancel</button>
+        <button type="button" class="btn-checkout" style="margin-top:15px;background:rgba(255,255,255,0.1);" id="btnCloseCustomer" data-lang="cancel">Cancel</button>
     </div>
 </div>
 
 <!-- PAYMENT MODAL -->
 <div class="modal" id="paymentModal">
     <div class="modal-content" style="max-width:400px;text-align:center;">
-        <div class="modal-title" style="text-align:center;">💵 Complete Sale</div>
-        <div style="font-size:14px;color:#9ca3af;">Total to pay:</div>
-        <!-- ✅ FIXED - Added data-value attribute -->
-        <div style="font-size:36px;font-weight:800;color:var(--primary);margin:10px 0 20px;" 
+        <div class="modal-title" style="text-align:center;">💵 <span data-lang="complete_sale">Complete Sale</span></div>
+        <div style="font-size:14px;color:#9ca3af;" data-lang="total_to_pay">Total to pay:</div>
+        <div style="font-size:36px;font-weight:800;color:var(--primary);margin:10px 0 20px;"
              id="paymentTotal" data-value="0">0.00 <?= $currency ?></div>
 
-        <label>Cash Received</label>
+        <label data-lang="cash_received">Cash Received</label>
         <input type="number" step="0.01" class="cash-input" id="cashReceived" placeholder="0.00">
 
         <div class="change-display" id="changeDisplay" style="display:none;">
-            Change: <span id="changeAmount">0.00 <?= $currency ?></span>
+            <span data-lang="change">Change</span>: <span id="changeAmount">0.00 <?= $currency ?></span>
         </div>
 
         <div style="display:flex;gap:10px;margin-top:20px;">
-            <button type="button" class="payment-btn" style="flex:1;" id="btnCancelPayment">Cancel</button>
-            <button type="button" class="btn-checkout" style="flex:1;margin:0;" id="btnConfirmPayment">✅ Confirm</button>
+            <button type="button" class="payment-btn" style="flex:1;" id="btnCancelPayment" data-lang="cancel">Cancel</button>
+            <button type="button" class="btn-checkout" style="flex:1;margin:0;" id="btnConfirmPayment">✅ <span data-lang="confirm">Confirm</span></button>
         </div>
     </div>
 </div>
@@ -731,17 +824,210 @@ label {
 <div class="modal" id="successModal">
     <div class="modal-content" style="max-width:400px;text-align:center;">
         <div style="font-size:80px;margin-bottom:15px;">🎉</div>
-        <div class="modal-title" style="text-align:center;">Sale Complete!</div>
+        <div class="modal-title" style="text-align:center;" data-lang="sale_complete">Sale Complete!</div>
         <div style="font-size:36px;font-weight:800;color:#10b981;margin:15px 0;" id="successAmount">0.00 <?= $currency ?></div>
-        <div style="color:#9ca3af;margin-bottom:15px;">Invoice: <strong id="successInvoice"></strong></div>
+        <div style="color:#9ca3af;margin-bottom:15px;"><span data-lang="invoice">Invoice</span>: <strong id="successInvoice"></strong></div>
         <div id="successChange" style="background:rgba(16,185,129,0.1);padding:14px;border-radius:10px;color:#10b981;font-weight:700;margin-bottom:15px;display:none;">
-            💰 Change: <span id="successChangeAmount"></span>
+            💰 <span data-lang="change">Change</span>: <span id="successChangeAmount"></span>
         </div>
-        <button type="button" class="btn-checkout" id="btnNewSale">🛒 New Sale</button>
+        <button type="button" class="btn-checkout" id="btnNewSale">🛒 <span data-lang="new_sale">New Sale</span></button>
     </div>
 </div>
 
 <script>
+// ===== 🌍 TRANSLATIONS =====
+var TRANSLATIONS = {
+    en: {
+        pos_terminal: 'POS Terminal',
+        search_products: '🔍 Search products...',
+        all: 'All',
+        cart: 'Cart',
+        clear: 'Clear',
+        add_customer: '👤 Add Customer (optional)',
+        cart_empty: 'Cart is empty',
+        click_to_add: 'Click products to add',
+        subtotal: 'Subtotal',
+        tax: 'Tax',
+        total: 'TOTAL',
+        cash: 'Cash',
+        card: 'Card',
+        checkout: 'Checkout',
+        select_customer: 'Select Customer',
+        search: '🔍 Search...',
+        cancel: 'Cancel',
+        complete_sale: 'Complete Sale',
+        total_to_pay: 'Total to pay:',
+        cash_received: 'Cash Received',
+        change: 'Change',
+        confirm: 'Confirm',
+        sale_complete: 'Sale Complete!',
+        invoice: 'Invoice',
+        new_sale: 'New Sale',
+        no_products: 'No products found',
+        no_customers: 'No customers found',
+        no_more_stock: '⚠️ No more stock',
+        stock_limit: '⚠️ Stock limit reached',
+        clear_cart_confirm: 'Clear cart?',
+        insufficient: '⚠️ Insufficient amount',
+        server_error: '❌ Server error',
+        network_error: '❌ Network error',
+        sale_failed: 'Sale failed',
+        out: 'OUT',
+        logout: 'Logout',
+        admin: 'Admin'
+    },
+    ar: {
+        pos_terminal: 'نقطة البيع',
+        search_products: '🔍 البحث عن المنتجات...',
+        all: 'الكل',
+        cart: 'السلة',
+        clear: 'مسح',
+        add_customer: '👤 إضافة زبون (اختياري)',
+        cart_empty: 'السلة فارغة',
+        click_to_add: 'انقر على المنتجات للإضافة',
+        subtotal: 'المجموع الفرعي',
+        tax: 'الضريبة',
+        total: 'المجموع',
+        cash: 'نقدي',
+        card: 'بطاقة',
+        checkout: 'الدفع',
+        select_customer: 'اختيار زبون',
+        search: '🔍 بحث...',
+        cancel: 'إلغاء',
+        complete_sale: 'إتمام البيع',
+        total_to_pay: 'المبلغ المطلوب:',
+        cash_received: 'المبلغ المستلم',
+        change: 'الباقي',
+        confirm: 'تأكيد',
+        sale_complete: 'تمت عملية البيع!',
+        invoice: 'الفاتورة',
+        new_sale: 'بيع جديد',
+        no_products: 'لا توجد منتجات',
+        no_customers: 'لا يوجد زبائن',
+        no_more_stock: '⚠️ لا يوجد مخزون إضافي',
+        stock_limit: '⚠️ تم الوصول لحد المخزون',
+        clear_cart_confirm: 'مسح السلة؟',
+        insufficient: '⚠️ المبلغ غير كافي',
+        server_error: '❌ خطأ في الخادم',
+        network_error: '❌ خطأ في الشبكة',
+        sale_failed: 'فشلت عملية البيع',
+        out: 'نفذ',
+        logout: 'خروج',
+        admin: 'الإدارة'
+    },
+    fr: {
+        pos_terminal: 'Point de Vente',
+        search_products: '🔍 Rechercher des produits...',
+        all: 'Tout',
+        cart: 'Panier',
+        clear: 'Vider',
+        add_customer: '👤 Ajouter un client (optionnel)',
+        cart_empty: 'Le panier est vide',
+        click_to_add: 'Cliquez sur les produits pour ajouter',
+        subtotal: 'Sous-total',
+        tax: 'Taxe',
+        total: 'TOTAL',
+        cash: 'Espèces',
+        card: 'Carte',
+        checkout: 'Paiement',
+        select_customer: 'Sélectionner un client',
+        search: '🔍 Rechercher...',
+        cancel: 'Annuler',
+        complete_sale: 'Finaliser la vente',
+        total_to_pay: 'Total à payer :',
+        cash_received: 'Montant reçu',
+        change: 'Monnaie',
+        confirm: 'Confirmer',
+        sale_complete: 'Vente terminée !',
+        invoice: 'Facture',
+        new_sale: 'Nouvelle vente',
+        no_products: 'Aucun produit trouvé',
+        no_customers: 'Aucun client trouvé',
+        no_more_stock: '⚠️ Plus de stock',
+        stock_limit: '⚠️ Limite de stock atteinte',
+        clear_cart_confirm: 'Vider le panier ?',
+        insufficient: '⚠️ Montant insuffisant',
+        server_error: '❌ Erreur serveur',
+        network_error: '❌ Erreur réseau',
+        sale_failed: 'Échec de la vente',
+        out: 'ÉPUISÉ',
+        logout: 'Déconnexion',
+        admin: 'Admin'
+    }
+};
+
+var LANG_META = {
+    en: { flag: '🇬🇧', code: 'EN', dir: 'ltr' },
+    ar: { flag: '🇸🇦', code: 'AR', dir: 'rtl' },
+    fr: { flag: '🇫🇷', code: 'FR', dir: 'ltr' }
+};
+
+var currentLang = localStorage.getItem('pos_lang') || 'en';
+
+// ===== Translation Helper =====
+function t(key) {
+    return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || 
+           (TRANSLATIONS['en'] && TRANSLATIONS['en'][key]) || 
+           key;
+}
+
+// ===== Apply Language =====
+function applyLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('pos_lang', lang);
+
+    var meta = LANG_META[lang];
+    
+    // Set direction
+    document.documentElement.setAttribute('dir', meta.dir);
+    document.documentElement.setAttribute('lang', lang);
+    
+    // Update lang button
+    document.getElementById('currentLangFlag').textContent = meta.flag;
+    document.getElementById('currentLangCode').textContent = meta.code;
+    
+    // Update active state in dropdown
+    var options = document.querySelectorAll('[data-lang-switch]');
+    for (var i = 0; i < options.length; i++) {
+        if (options[i].dataset.langSwitch === lang) {
+            options[i].classList.add('active');
+        } else {
+            options[i].classList.remove('active');
+        }
+    }
+    
+    // Update all data-lang elements
+    var elements = document.querySelectorAll('[data-lang]');
+    for (var i = 0; i < elements.length; i++) {
+        var key = elements[i].dataset.lang;
+        if (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) {
+            elements[i].textContent = TRANSLATIONS[lang][key];
+        }
+    }
+    
+    // Update all data-lang-placeholder elements
+    var placeholders = document.querySelectorAll('[data-lang-placeholder]');
+    for (var i = 0; i < placeholders.length; i++) {
+        var key = placeholders[i].dataset.langPlaceholder;
+        if (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) {
+            placeholders[i].placeholder = TRANSLATIONS[lang][key];
+        }
+    }
+    
+    // Update tooltips
+    var logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.title = t('logout');
+    
+    // Re-render dynamic content
+    renderProducts();
+    renderCart();
+    
+    // Close dropdown
+    document.getElementById('langDropdown').classList.remove('show');
+    
+    console.log('🌍 Language changed to:', lang, '| Direction:', meta.dir);
+}
+
 // ===== DATA FROM PHP =====
 var ALL_PRODUCTS = <?= json_encode($productsList) ?>;
 var ALL_CUSTOMERS = <?= json_encode($customersList) ?>;
@@ -778,7 +1064,7 @@ function renderProducts() {
 
         var badgeClass = 'stock-badge';
         var badgeText = stock;
-        if (outOfStock) { badgeClass += ' out'; badgeText = 'OUT'; }
+        if (outOfStock) { badgeClass += ' out'; badgeText = t('out'); }
         else if (isLow) badgeClass += ' low';
 
         var image = p.image_url
@@ -795,7 +1081,7 @@ function renderProducts() {
     }
 
     if (html === '') {
-        html = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">No products found</div>';
+        html = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">' + t('no_products') + '</div>';
     }
 
     grid.innerHTML = html;
@@ -831,7 +1117,7 @@ function addToCartById(productId) {
 
     if (existing) {
         if (existing.qty >= stock) {
-            showToast('⚠️ No more stock', 'error');
+            showToast(t('no_more_stock'), 'error');
             return;
         }
         existing.qty++;
@@ -856,7 +1142,7 @@ function updateQty(id, change) {
             if (newQty <= 0) {
                 cart.splice(i, 1);
             } else if (newQty > cart[i].stock) {
-                showToast('⚠️ Stock limit reached', 'error');
+                showToast(t('stock_limit'), 'error');
                 return;
             } else {
                 cart[i].qty = newQty;
@@ -879,10 +1165,10 @@ function removeFromCart(id) {
 
 function clearCart() {
     if (cart.length === 0) return;
-    if (!confirm('Clear cart?')) return;
+    if (!confirm(t('clear_cart_confirm'))) return;
     cart = [];
     selectedCustomer = null;
-    document.getElementById('customerBtn').innerHTML = '👤 Add Customer (optional)';
+    document.getElementById('customerBtn').textContent = t('add_customer');
     renderCart();
 }
 
@@ -894,11 +1180,10 @@ function renderCart() {
     var fabCount = document.getElementById('fabCount');
 
     if (cart.length === 0) {
-        list.innerHTML = '<div class="cart-empty"><div class="icon">🛒</div><div>Cart is empty</div><p style="font-size:12px;margin-top:8px;">Click products to add</p></div>';
+        list.innerHTML = '<div class="cart-empty"><div class="icon">🛒</div><div>' + t('cart_empty') + '</div><p style="font-size:12px;margin-top:8px;">' + t('click_to_add') + '</p></div>';
         totals.style.display = 'none';
         btn.disabled = true;
         count.textContent = '';
-        // ✅ NEW - Reset fab count
         if (fabCount) fabCount.textContent = '0';
         return;
     }
@@ -906,7 +1191,6 @@ function renderCart() {
     var totalItems = 0;
     for (var i = 0; i < cart.length; i++) totalItems += cart[i].qty;
     count.textContent = '(' + totalItems + ')';
-    // ✅ NEW - Update fab count
     if (fabCount) fabCount.textContent = totalItems;
 
     var html = '';
@@ -970,7 +1254,7 @@ function renderCustomers(filter) {
         html += '</div>';
     }
 
-    if (html === '') html = '<div style="text-align:center;padding:20px;color:#6b7280;">No customers found</div>';
+    if (html === '') html = '<div style="text-align:center;padding:20px;color:#6b7280;">' + t('no_customers') + '</div>';
 
     list.innerHTML = html;
 }
@@ -1005,7 +1289,6 @@ function checkout() {
     var total = subtotal + tax;
 
     if (selectedPayment === 'cash') {
-        // ✅ FIXED - Store total as data-value
         var paymentTotalEl = document.getElementById('paymentTotal');
         paymentTotalEl.textContent = total.toFixed(2) + ' ' + CURRENCY;
         paymentTotalEl.dataset.value = total;
@@ -1018,7 +1301,6 @@ function checkout() {
     }
 }
 
-// ✅ FIXED - Use data-value instead of parseFloat on text
 function calculateChange() {
     var total = parseFloat(document.getElementById('paymentTotal').dataset.value) || 0;
     var received = parseFloat(document.getElementById('cashReceived').value) || 0;
@@ -1032,13 +1314,12 @@ function calculateChange() {
     }
 }
 
-// ✅ FIXED - Use data-value instead of parseFloat on text
 function confirmPayment() {
     var total = parseFloat(document.getElementById('paymentTotal').dataset.value) || 0;
     var received = parseFloat(document.getElementById('cashReceived').value) || 0;
 
     if (received < total) {
-        showToast('⚠️ Insufficient amount', 'error');
+        showToast(t('insufficient'), 'error');
         return;
     }
 
@@ -1068,7 +1349,7 @@ function processSale(total, paid, change) {
             res = JSON.parse(text);
         } catch(e) {
             console.error('Bad response:', text);
-            showToast('❌ Server error', 'error');
+            showToast(t('server_error'), 'error');
             return;
         }
 
@@ -1087,16 +1368,15 @@ function processSale(total, paid, change) {
             openModal('successModal');
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         } else {
-            showToast('❌ ' + (res.message || 'Sale failed'), 'error');
+            showToast('❌ ' + (res.message || t('sale_failed')), 'error');
         }
     })
     .catch(function(e) {
         console.error(e);
-        showToast('❌ Network error', 'error');
+        showToast(t('network_error'), 'error');
     });
 }
 
-// ✅ FIXED - Simplified newSale
 function newSale() {
     closeModal('successModal');
     setTimeout(function() { location.reload(); }, 300);
@@ -1113,6 +1393,32 @@ function showToast(msg, type) {
 
 // ===== EVENT LISTENERS =====
 document.addEventListener('DOMContentLoaded', function() {
+
+    // ✅ Apply saved language on load
+    applyLanguage(currentLang);
+
+    // ✅ Language switcher toggle
+    document.getElementById('langToggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('langDropdown').classList.toggle('show');
+    });
+
+    // ✅ Language options
+    var langOptions = document.querySelectorAll('[data-lang-switch]');
+    for (var i = 0; i < langOptions.length; i++) {
+        langOptions[i].addEventListener('click', function() {
+            applyLanguage(this.dataset.langSwitch);
+        });
+    }
+
+    // ✅ Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+        var dropdown = document.getElementById('langDropdown');
+        var toggle = document.getElementById('langToggle');
+        if (!toggle.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
 
     // Search
     document.getElementById('searchInput').addEventListener('input', renderProducts);
@@ -1165,15 +1471,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ✅ NEW - FAB cart button toggle
+    // FAB cart button
     document.getElementById('fabCart').addEventListener('click', function() {
-        var cart = document.getElementById('cartSide');
+        var cartEl = document.getElementById('cartSide');
         var overlay = document.getElementById('cartOverlay');
-        cart.classList.toggle('open');
+        cartEl.classList.toggle('open');
         overlay.classList.toggle('show');
     });
 
-    // ✅ NEW - Overlay closes cart
+    // Overlay closes cart
     document.getElementById('cartOverlay').addEventListener('click', function() {
         document.getElementById('cartSide').classList.remove('open');
         this.classList.remove('show');
@@ -1185,6 +1491,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ BizFlow POS Ready');
     console.log('📦 Products loaded:', ALL_PRODUCTS.length);
     console.log('👥 Customers:', ALL_CUSTOMERS.length);
+    console.log('🌍 Language:', currentLang);
 });
 </script>
 <script src="pwa.js"></script>
