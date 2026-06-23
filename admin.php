@@ -46,7 +46,7 @@ $monthProfit = $monthStats['revenue'] - $monthExpenses;
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title><?= htmlspecialchars($business['name']) ?> · Admin</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest_admin.json">
 <?= renderThemeCSS($theme) ?>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
