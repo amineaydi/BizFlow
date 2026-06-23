@@ -292,4 +292,37 @@ function checkStock($productId, $quantity) {
     
     return ['ok' => true];
 }
+/**
+ * Require admin login
+ */
+function requireAdminLogin() {
+    if (!isset($_SESSION['admin_user_id'])) {
+        header("Location: admin_login.php");
+        exit;
+    }
+    
+    // Set generic session vars from admin session
+    $_SESSION['user_id'] = $_SESSION['admin_user_id'];
+    $_SESSION['user_name'] = $_SESSION['admin_user_name'];
+    $_SESSION['user_role'] = $_SESSION['admin_user_role'];
+    $_SESSION['business_id'] = $_SESSION['admin_business_id'];
+    $_SESSION['business_name'] = $_SESSION['admin_business_name'];
+}
+
+/**
+ * Require POS login
+ */
+function requirePosLogin() {
+    if (!isset($_SESSION['pos_user_id'])) {
+        header("Location: pos_login.php");
+        exit;
+    }
+    
+    // Set generic session vars from POS session
+    $_SESSION['user_id'] = $_SESSION['pos_user_id'];
+    $_SESSION['user_name'] = $_SESSION['pos_user_name'];
+    $_SESSION['user_role'] = $_SESSION['pos_user_role'];
+    $_SESSION['business_id'] = $_SESSION['pos_business_id'];
+    $_SESSION['business_name'] = $_SESSION['pos_business_name'];
+}
 ?>
