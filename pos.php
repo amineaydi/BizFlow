@@ -533,6 +533,10 @@ label {
 
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    .card {
+    width: 100%;       /* Takes up full width on mobile */
+    max-width: 400px;  /* Won't grow larger than this on desktop */
+}
 </style>
 </head>
 <body>
