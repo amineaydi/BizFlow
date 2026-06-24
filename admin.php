@@ -1010,11 +1010,12 @@ select.form-select {
                 </div>
                 
                 <a href="admin_logout.php" class="btn-logout">🚪</a>
+                <?= renderLangSwitcher() ?> 
             </div>
         </div>
         
         <div class="content">
-           <?= renderLangSwitcher() ?> 
+           
             <?php if (isset($_GET['msg'])): ?>
                 <div class="alert success">✅ <?= htmlspecialchars($_GET['msg']) ?></div>
             <?php endif; ?>
