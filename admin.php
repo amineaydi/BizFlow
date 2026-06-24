@@ -918,19 +918,19 @@ select.form-select {
         </div>
         
         <div class="nav-section">
-            <div class="nav-title">Overview</div>
+            <div class="nav-title"><?= __('overview') ?></div>
             <button class="nav-item active" onclick="switchTab('dashboard', this)">
                 <span class="nav-icon">📊</span>
-                <span>Dashboard</span>
+                <span><?= __('dashboard') ?></span>
             </button>
             
         </div>
         
         <div class="nav-section">
-            <div class="nav-title">Sales</div>
+            <div class="nav-title"><?= __('sales') ?></div>
             <button class="nav-item" onclick="switchTab('sales', this)">
                 <span class="nav-icon">💰</span>
-                <span>All Sales</span>
+                <span><?= __('all_sales') ?></span>
             </button>
             <button class="nav-item" onclick="switchTab('customers', this)">
                 <span class="nav-icon">👥</span>
@@ -942,7 +942,7 @@ select.form-select {
         </div>
         
         <div class="nav-section">
-            <div class="nav-title">Inventory</div>
+            <div class="nav-title"><?= __('inventory') ?></div>
             <button class="nav-item" onclick="switchTab('products', this)">
                 <span class="nav-icon">📦</span>
                 <span>Products</span>
@@ -961,7 +961,7 @@ select.form-select {
         </div>
         
         <div class="nav-section">
-            <div class="nav-title">Finance</div>
+            <div class="nav-title"><?= __('finance') ?></div>
             <button class="nav-item" onclick="switchTab('expenses', this)">
                 <span class="nav-icon">💸</span>
                 <span>Expenses</span>
@@ -973,7 +973,7 @@ select.form-select {
         </div>
         
         <div class="nav-section">
-            <div class="nav-title">Management</div>
+            <div class="nav-title"><?= __('management') ?></div>
             <button class="nav-item" onclick="switchTab('staff', this)">
                 <span class="nav-icon">👨‍💼</span>
                 <span>Staff & PINs</span>
