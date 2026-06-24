@@ -42,6 +42,34 @@ $langMeta = [
 // The system will automatically replace English text on the page!
 // ============================================================
 $autoTranslate = [
+        // ===== POS Old Keys (compatibility) =====
+    'cart_empty'           => ['ar' => 'السلة فارغة',    'fr' => 'Le panier est vide'],
+    'click_to_add'         => ['ar' => 'انقر على المنتجات للإضافة','fr' => 'Cliquez sur les produits'],
+    'add_customer'         => ['ar' => '👤 إضافة زبون (اختياري)','fr' => '👤 Ajouter un client (optionnel)'],
+    'search_products'      => ['ar' => '🔍 البحث عن المنتجات...','fr' => '🔍 Rechercher des produits...'],
+    'cart'                 => ['ar' => 'السلة',          'fr' => 'Panier'],
+    'clear'                => ['ar' => 'مسح',            'fr' => 'Vider'],
+    'subtotal'             => ['ar' => 'المجموع الفرعي', 'fr' => 'Sous-total'],
+    'tax'                  => ['ar' => 'الضريبة',        'fr' => 'Taxe'],
+    'total'                => ['ar' => 'المجموع',        'fr' => 'TOTAL'],
+    'cash'                 => ['ar' => 'نقدي',           'fr' => 'Espèces'],
+    'card'                 => ['ar' => 'بطاقة',          'fr' => 'Carte'],
+    'checkout'             => ['ar' => 'الدفع',          'fr' => 'Paiement'],
+    'select_customer'      => ['ar' => 'اختيار زبون',    'fr' => 'Sélectionner un client'],
+    'complete_sale'        => ['ar' => 'إتمام البيع',    'fr' => 'Finaliser la vente'],
+    'total_to_pay'         => ['ar' => 'المبلغ المطلوب:','fr' => 'Total à payer :'],
+    'cash_received'        => ['ar' => 'المبلغ المستلم', 'fr' => 'Montant reçu'],
+    'change'               => ['ar' => 'الباقي',         'fr' => 'Monnaie'],
+    'confirm'              => ['ar' => 'تأكيد',          'fr' => 'Confirmer'],
+    'cancel'               => ['ar' => 'إلغاء',          'fr' => 'Annuler'],
+    'sale_complete'        => ['ar' => 'تمت عملية البيع!','fr' => 'Vente terminée !'],
+    'invoice'              => ['ar' => 'الفاتورة',       'fr' => 'Facture'],
+    'new_sale'             => ['ar' => 'بيع جديد',       'fr' => 'Nouvelle vente'],
+    'all'                  => ['ar' => 'الكل',           'fr' => 'Tout'],
+    'admin'                => ['ar' => 'الإدارة',        'fr' => 'Admin'],
+    'logout'               => ['ar' => 'خروج',           'fr' => 'Déconnexion'],
+    'pos_terminal'         => ['ar' => 'نقطة البيع',     'fr' => 'Point de Vente'],
+    'search'               => ['ar' => '🔍 بحث...',       'fr' => '🔍 Rechercher...'],
 
     // ===== Sidebar Sections =====
     'OVERVIEW'             => ['ar' => 'نظرة عامة',      'fr' => 'APERÇU'],
@@ -231,8 +259,43 @@ function endAutoTranslate() {
 // ============================================================
 function __($key) {
     global $autoTranslate, $currentLang;
-    if ($currentLang === 'en') return $key;
-    return $autoTranslate[$key][$currentLang] ?? $key;
+    
+    // English version map for old keys
+    $englishMap = [
+        'cart_empty' => 'Cart is empty',
+        'click_to_add' => 'Click products to add',
+        'add_customer' => '👤 Add Customer (optional)',
+        'search_products' => '🔍 Search products...',
+        'cart' => 'Cart',
+        'clear' => 'Clear',
+        'subtotal' => 'Subtotal',
+        'tax' => 'Tax',
+        'total' => 'TOTAL',
+        'cash' => 'Cash',
+        'card' => 'Card',
+        'checkout' => 'Checkout',
+        'select_customer' => 'Select Customer',
+        'complete_sale' => 'Complete Sale',
+        'total_to_pay' => 'Total to pay:',
+        'cash_received' => 'Cash Received',
+        'change' => 'Change',
+        'confirm' => 'Confirm',
+        'cancel' => 'Cancel',
+        'sale_complete' => 'Sale Complete!',
+        'invoice' => 'Invoice',
+        'new_sale' => 'New Sale',
+        'all' => 'All',
+        'admin' => 'Admin',
+        'logout' => 'Logout',
+        'pos_terminal' => 'POS Terminal',
+        'search' => '🔍 Search...',
+    ];
+    
+    if ($currentLang === 'en') {
+        return $englishMap[$key] ?? $key;
+    }
+    
+    return $autoTranslate[$key][$currentLang] ?? ($englishMap[$key] ?? $key);
 }
 
 function getLangDir() {
