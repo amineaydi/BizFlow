@@ -1,5 +1,5 @@
 <?php
-// BizFlow Language File
+// BizFlow - Auto Translation System
 
 function getCurrentLang() {
     $allowed = ['en', 'ar', 'fr'];
@@ -36,201 +36,203 @@ $langMeta = [
     'fr' => ['flag' => '🇫🇷', 'code' => 'FR', 'dir' => 'ltr', 'name' => 'Français'],
 ];
 
-$translations = [
+// ============================================================
+// 🌍 AUTO TRANSLATION DICTIONARY
+// Format: 'English Text' => ['ar' => 'Arabic', 'fr' => 'French']
+// The system will automatically replace English text on the page!
+// ============================================================
+$autoTranslate = [
 
-    'en' => [
-        // General
-        'app_name' => 'BizFlow', 'admin_panel' => 'Admin Panel', 'pos_terminal' => 'POS Terminal',
-        'save' => 'Save', 'cancel' => 'Cancel', 'confirm' => 'Confirm', 'delete' => 'Delete',
-        'edit' => 'Edit', 'add' => 'Add', 'search' => '🔍 Search...', 'loading' => 'Loading...',
-        'yes' => 'Yes', 'no' => 'No', 'all' => 'All', 'close' => 'Close', 'logout' => 'Logout',
-        'admin' => 'Admin', 'language' => 'Language', 'live' => 'LIVE', 'today' => 'Today',
-        'view_all' => 'View All', 'units' => 'Units', 'piece' => 'PIECE', 'cup' => 'CUP',
-        
-        // Sidebar
-        'overview' => 'OVERVIEW', 'sales' => 'SALES', 'inventory' => 'INVENTORY',
-        'finance' => 'FINANCE', 'management' => 'MANAGEMENT',
-        'dashboard' => 'Dashboard', 'all_sales' => 'All Sales', 'customers' => 'Customers',
-        'products' => 'Products', 'categories' => 'Categories', 'suppliers' => 'Suppliers',
-        'expenses' => 'Expenses', 'reports' => 'Reports', 'staff_pins' => 'Staff & PINs',
-        'settings' => 'Settings',
-        
-        // Dashboard
-        'welcome_back' => 'Welcome back', 'whats_happening' => "Here's what's happening today",
-        'todays_revenue' => "TODAY'S REVENUE", 'sales_today' => 'SALES TODAY',
-        'monthly_profit' => 'MONTHLY PROFIT', 'low_stock' => 'LOW STOCK',
-        'live_label' => 'Live', 'real_time' => 'Real-time',
-        'after_expenses' => 'After expenses', 'items_low' => 'Items low',
-        'recent_sales' => 'Recent Sales', 'quick_actions' => 'Quick Actions',
-        'new_sale' => 'New Sale', 'add_product' => 'Add Product',
-        'add_customer' => 'Add Customer', 'add_cashier' => 'Add Cashier',
-        'walk_in' => 'Walk-in', 'by' => 'by',
-        
-        // Sales page
-        'sales_history' => 'Sales History', 'coming_soon' => 'Coming soon!',
-        
-        // Customers page
-        'no_customers_yet' => 'No customers yet',
-        
-        // Products page
-        'product' => 'PRODUCT', 'category' => 'CATEGORY', 'price' => 'PRICE',
-        'stock' => 'STOCK', 'actions' => 'ACTIONS', 'sku' => 'SKU',
-        
-        // Categories
-        // (already covered above)
-        
-        // Suppliers
-        'no_suppliers_yet' => 'No suppliers yet',
-        
-        // Expenses
-        'this_month' => 'this month', 'no_expenses' => 'No expenses recorded',
-        
-        // Reports
-        'reports_analytics' => 'Reports & Analytics', 'period' => 'Period',
-        'last_7_days' => 'Last 7 Days', 'last_30_days' => 'Last 30 Days',
-        'last_90_days' => 'Last 90 Days', 'last_year' => 'Last Year',
-        'print' => 'Print', 'export_csv' => 'Export CSV',
-        'total_revenue' => 'TOTAL REVENUE', 'gross_profit' => 'GROSS PROFIT',
-        'total_expenses' => 'TOTAL EXPENSES', 'net_profit' => 'NET PROFIT',
-        'avg_transaction' => 'AVG TRANSACTION', 'total_items_sold' => 'TOTAL ITEMS SOLD',
-        'from_sales' => 'From sales', 'operating_costs' => 'Operating costs',
-        'profit' => 'Profit', 'per_sale' => 'Per sale',
-        'daily_revenue_trend' => 'Daily Revenue Trend',
-        'top_selling_products' => 'Top Selling Products',
-        'top_customers' => 'Top Customers',
-        'top_performing_cashiers' => 'Top Performing Cashiers',
-        'no_customer_sales' => 'No customer sales yet',
-        'dt_profit' => 'DT profit',
-    ],
-
-    'ar' => [
-        // General
-        'app_name' => 'بيزفلو', 'admin_panel' => 'لوحة الإدارة', 'pos_terminal' => 'نقطة البيع',
-        'save' => 'حفظ', 'cancel' => 'إلغاء', 'confirm' => 'تأكيد', 'delete' => 'حذف',
-        'edit' => 'تعديل', 'add' => 'إضافة', 'search' => '🔍 بحث...', 'loading' => 'جاري التحميل...',
-        'yes' => 'نعم', 'no' => 'لا', 'all' => 'الكل', 'close' => 'إغلاق', 'logout' => 'خروج',
-        'admin' => 'الإدارة', 'language' => 'اللغة', 'live' => 'مباشر', 'today' => 'اليوم',
-        'view_all' => 'عرض الكل', 'units' => 'وحدات', 'piece' => 'قطعة', 'cup' => 'كوب',
-        
-        // Sidebar
-        'overview' => 'نظرة عامة', 'sales' => 'المبيعات', 'inventory' => 'المخزون',
-        'finance' => 'المالية', 'management' => 'الإدارة',
-        'dashboard' => 'لوحة التحكم', 'all_sales' => 'كل المبيعات', 'customers' => 'الزبائن',
-        'products' => 'المنتجات', 'categories' => 'الفئات', 'suppliers' => 'الموردون',
-        'expenses' => 'المصاريف', 'reports' => 'التقارير', 'staff_pins' => 'الموظفون والرموز',
-        'settings' => 'الإعدادات',
-        
-        // Dashboard
-        'welcome_back' => 'مرحباً بعودتك', 'whats_happening' => 'إليك ما يحدث اليوم',
-        'todays_revenue' => 'إيرادات اليوم', 'sales_today' => 'مبيعات اليوم',
-        'monthly_profit' => 'الأرباح الشهرية', 'low_stock' => 'مخزون منخفض',
-        'live_label' => 'مباشر', 'real_time' => 'فوري',
-        'after_expenses' => 'بعد المصاريف', 'items_low' => 'منتجات قليلة',
-        'recent_sales' => 'المبيعات الأخيرة', 'quick_actions' => 'إجراءات سريعة',
-        'new_sale' => 'بيع جديد', 'add_product' => 'إضافة منتج',
-        'add_customer' => 'إضافة زبون', 'add_cashier' => 'إضافة كاشير',
-        'walk_in' => 'زبون عابر', 'by' => 'بواسطة',
-        
-        // Sales page
-        'sales_history' => 'سجل المبيعات', 'coming_soon' => 'قريباً!',
-        
-        // Customers page
-        'no_customers_yet' => 'لا يوجد زبائن بعد',
-        
-        // Products page
-        'product' => 'المنتج', 'category' => 'الفئة', 'price' => 'السعر',
-        'stock' => 'المخزون', 'actions' => 'الإجراءات', 'sku' => 'الرمز',
-        
-        // Suppliers
-        'no_suppliers_yet' => 'لا يوجد موردون بعد',
-        
-        // Expenses
-        'this_month' => 'هذا الشهر', 'no_expenses' => 'لا توجد مصاريف مسجلة',
-        
-        // Reports
-        'reports_analytics' => 'التقارير والتحليلات', 'period' => 'الفترة',
-        'last_7_days' => 'آخر 7 أيام', 'last_30_days' => 'آخر 30 يوم',
-        'last_90_days' => 'آخر 90 يوم', 'last_year' => 'العام الماضي',
-        'print' => 'طباعة', 'export_csv' => 'تصدير CSV',
-        'total_revenue' => 'إجمالي الإيرادات', 'gross_profit' => 'الربح الإجمالي',
-        'total_expenses' => 'إجمالي المصاريف', 'net_profit' => 'صافي الربح',
-        'avg_transaction' => 'متوسط المعاملة', 'total_items_sold' => 'إجمالي العناصر المباعة',
-        'from_sales' => 'من المبيعات', 'operating_costs' => 'تكاليف التشغيل',
-        'profit' => 'ربح', 'per_sale' => 'لكل بيع',
-        'daily_revenue_trend' => 'اتجاه الإيرادات اليومية',
-        'top_selling_products' => 'المنتجات الأكثر مبيعاً',
-        'top_customers' => 'أفضل الزبائن',
-        'top_performing_cashiers' => 'أفضل الكاشيرات أداءً',
-        'no_customer_sales' => 'لا توجد مبيعات للزبائن بعد',
-        'dt_profit' => 'دينار ربح',
-    ],
-
-    'fr' => [
-        // General
-        'app_name' => 'BizFlow', 'admin_panel' => 'Panneau Admin', 'pos_terminal' => 'Point de Vente',
-        'save' => 'Enregistrer', 'cancel' => 'Annuler', 'confirm' => 'Confirmer', 'delete' => 'Supprimer',
-        'edit' => 'Modifier', 'add' => 'Ajouter', 'search' => '🔍 Rechercher...', 'loading' => 'Chargement...',
-        'yes' => 'Oui', 'no' => 'Non', 'all' => 'Tout', 'close' => 'Fermer', 'logout' => 'Déconnexion',
-        'admin' => 'Admin', 'language' => 'Langue', 'live' => 'EN DIRECT', 'today' => "Aujourd'hui",
-        'view_all' => 'Voir tout', 'units' => 'Unités', 'piece' => 'PIÈCE', 'cup' => 'TASSE',
-        
-        // Sidebar
-        'overview' => 'APERÇU', 'sales' => 'VENTES', 'inventory' => 'INVENTAIRE',
-        'finance' => 'FINANCES', 'management' => 'GESTION',
-        'dashboard' => 'Tableau de bord', 'all_sales' => 'Toutes les ventes', 'customers' => 'Clients',
-        'products' => 'Produits', 'categories' => 'Catégories', 'suppliers' => 'Fournisseurs',
-        'expenses' => 'Dépenses', 'reports' => 'Rapports', 'staff_pins' => 'Personnel & PINs',
-        'settings' => 'Paramètres',
-        
-        // Dashboard
-        'welcome_back' => 'Bon retour', 'whats_happening' => "Voici ce qui se passe aujourd'hui",
-        'todays_revenue' => "REVENU DU JOUR", 'sales_today' => 'VENTES DU JOUR',
-        'monthly_profit' => 'BÉNÉFICE MENSUEL', 'low_stock' => 'STOCK FAIBLE',
-        'live_label' => 'En direct', 'real_time' => 'Temps réel',
-        'after_expenses' => 'Après dépenses', 'items_low' => 'Articles faibles',
-        'recent_sales' => 'Ventes récentes', 'quick_actions' => 'Actions rapides',
-        'new_sale' => 'Nouvelle vente', 'add_product' => 'Ajouter produit',
-        'add_customer' => 'Ajouter client', 'add_cashier' => 'Ajouter caissier',
-        'walk_in' => 'Client occasionnel', 'by' => 'par',
-        
-        // Sales page
-        'sales_history' => 'Historique des ventes', 'coming_soon' => 'Bientôt disponible !',
-        
-        // Customers page
-        'no_customers_yet' => 'Aucun client pour le moment',
-        
-        // Products page
-        'product' => 'PRODUIT', 'category' => 'CATÉGORIE', 'price' => 'PRIX',
-        'stock' => 'STOCK', 'actions' => 'ACTIONS', 'sku' => 'SKU',
-        
-        // Suppliers
-        'no_suppliers_yet' => 'Aucun fournisseur pour le moment',
-        
-        // Expenses
-        'this_month' => 'ce mois', 'no_expenses' => 'Aucune dépense enregistrée',
-        
-        // Reports
-        'reports_analytics' => 'Rapports & Analyses', 'period' => 'Période',
-        'last_7_days' => '7 derniers jours', 'last_30_days' => '30 derniers jours',
-        'last_90_days' => '90 derniers jours', 'last_year' => "L'année dernière",
-        'print' => 'Imprimer', 'export_csv' => 'Exporter CSV',
-        'total_revenue' => 'REVENU TOTAL', 'gross_profit' => 'BÉNÉFICE BRUT',
-        'total_expenses' => 'DÉPENSES TOTALES', 'net_profit' => 'BÉNÉFICE NET',
-        'avg_transaction' => 'TRANSACTION MOY.', 'total_items_sold' => 'ARTICLES VENDUS',
-        'from_sales' => 'Des ventes', 'operating_costs' => "Coûts d'exploitation",
-        'profit' => 'Bénéfice', 'per_sale' => 'Par vente',
-        'daily_revenue_trend' => 'Tendance des revenus quotidiens',
-        'top_selling_products' => 'Produits les plus vendus',
-        'top_customers' => 'Meilleurs clients',
-        'top_performing_cashiers' => 'Meilleurs caissiers',
-        'no_customer_sales' => 'Aucune vente client',
-        'dt_profit' => 'DT bénéfice',
-    ],
+    // ===== Sidebar Sections =====
+    'OVERVIEW'             => ['ar' => 'نظرة عامة',      'fr' => 'APERÇU'],
+    'SALES'                => ['ar' => 'المبيعات',       'fr' => 'VENTES'],
+    'INVENTORY'            => ['ar' => 'المخزون',        'fr' => 'INVENTAIRE'],
+    'FINANCE'              => ['ar' => 'المالية',        'fr' => 'FINANCES'],
+    'MANAGEMENT'           => ['ar' => 'الإدارة',        'fr' => 'GESTION'],
+    
+    // ===== Sidebar Items =====
+    'Dashboard'            => ['ar' => 'لوحة التحكم',    'fr' => 'Tableau de bord'],
+    'All Sales'            => ['ar' => 'كل المبيعات',    'fr' => 'Toutes les ventes'],
+    'Customers'            => ['ar' => 'الزبائن',        'fr' => 'Clients'],
+    'Products'             => ['ar' => 'المنتجات',       'fr' => 'Produits'],
+    'Categories'           => ['ar' => 'الفئات',         'fr' => 'Catégories'],
+    'Suppliers'            => ['ar' => 'الموردون',       'fr' => 'Fournisseurs'],
+    'Expenses'             => ['ar' => 'المصاريف',       'fr' => 'Dépenses'],
+    'Reports'              => ['ar' => 'التقارير',       'fr' => 'Rapports'],
+    'Staff & PINs'         => ['ar' => 'الموظفون والرموز','fr' => 'Personnel & PINs'],
+    'Settings'             => ['ar' => 'الإعدادات',      'fr' => 'Paramètres'],
+    'Admin Panel'          => ['ar' => 'لوحة الإدارة',   'fr' => 'Panneau Admin'],
+    'POS Terminal'         => ['ar' => 'نقطة البيع',     'fr' => 'Point de Vente'],
+    
+    // ===== Dashboard =====
+    'Welcome back'         => ['ar' => 'مرحباً بعودتك',  'fr' => 'Bon retour'],
+    "Here's what's happening today" => ['ar' => 'إليك ما يحدث اليوم', 'fr' => "Voici ce qui se passe aujourd'hui"],
+    "TODAY'S REVENUE"      => ['ar' => 'إيرادات اليوم',  'fr' => 'REVENU DU JOUR'],
+    'SALES TODAY'          => ['ar' => 'مبيعات اليوم',   'fr' => 'VENTES DU JOUR'],
+    'MONTHLY PROFIT'       => ['ar' => 'الأرباح الشهرية','fr' => 'BÉNÉFICE MENSUEL'],
+    'LOW STOCK'            => ['ar' => 'مخزون منخفض',    'fr' => 'STOCK FAIBLE'],
+    'Real-time'            => ['ar' => 'فوري',           'fr' => 'Temps réel'],
+    'After expenses'       => ['ar' => 'بعد المصاريف',   'fr' => 'Après dépenses'],
+    'Items low'            => ['ar' => 'منتجات قليلة',   'fr' => 'Articles faibles'],
+    'Live'                 => ['ar' => 'مباشر',          'fr' => 'En direct'],
+    'LIVE'                 => ['ar' => 'مباشر',          'fr' => 'EN DIRECT'],
+    'Today:'               => ['ar' => 'اليوم:',         'fr' => "Aujourd'hui:"],
+    'Recent Sales'         => ['ar' => 'المبيعات الأخيرة','fr' => 'Ventes récentes'],
+    'Quick Actions'        => ['ar' => 'إجراءات سريعة',  'fr' => 'Actions rapides'],
+    'View All'             => ['ar' => 'عرض الكل',       'fr' => 'Voir tout'],
+    'New Sale'             => ['ar' => 'بيع جديد',       'fr' => 'Nouvelle vente'],
+    'Add Product'          => ['ar' => 'إضافة منتج',     'fr' => 'Ajouter produit'],
+    'Add Customer'         => ['ar' => 'إضافة زبون',     'fr' => 'Ajouter client'],
+    'Add Cashier'          => ['ar' => 'إضافة كاشير',    'fr' => 'Ajouter caissier'],
+    'Walk-in'              => ['ar' => 'زبون عابر',      'fr' => 'Client occasionnel'],
+    'by'                   => ['ar' => 'بواسطة',         'fr' => 'par'],
+    
+    // ===== Sales Page =====
+    'Sales History'        => ['ar' => 'سجل المبيعات',   'fr' => 'Historique des ventes'],
+    'Coming soon!'         => ['ar' => 'قريباً!',         'fr' => 'Bientôt disponible !'],
+    
+    // ===== Empty States =====
+    'No customers yet'     => ['ar' => 'لا يوجد زبائن بعد', 'fr' => 'Aucun client pour le moment'],
+    'No suppliers yet'     => ['ar' => 'لا يوجد موردون بعد','fr' => 'Aucun fournisseur pour le moment'],
+    'No expenses recorded' => ['ar' => 'لا توجد مصاريف مسجلة','fr' => 'Aucune dépense enregistrée'],
+    'No customer sales yet'=> ['ar' => 'لا توجد مبيعات للزبائن','fr' => 'Aucune vente client'],
+    'No products found'    => ['ar' => 'لا توجد منتجات', 'fr' => 'Aucun produit trouvé'],
+    
+    // ===== Products Page =====
+    'PRODUCT'              => ['ar' => 'المنتج',         'fr' => 'PRODUIT'],
+    'CATEGORY'             => ['ar' => 'الفئة',          'fr' => 'CATÉGORIE'],
+    'PRICE'                => ['ar' => 'السعر',          'fr' => 'PRIX'],
+    'STOCK'                => ['ar' => 'المخزون',        'fr' => 'STOCK'],
+    'ACTIONS'              => ['ar' => 'الإجراءات',      'fr' => 'ACTIONS'],
+    'ADD'                  => ['ar' => 'إضافة',          'fr' => 'AJOUTER'],
+    'Delete'               => ['ar' => 'حذف',            'fr' => 'Supprimer'],
+    'Edit'                 => ['ar' => 'تعديل',          'fr' => 'Modifier'],
+    'PIECE'                => ['ar' => 'قطعة',           'fr' => 'PIÈCE'],
+    'CUP'                  => ['ar' => 'كوب',            'fr' => 'TASSE'],
+    
+    // ===== Expenses =====
+    'this month'           => ['ar' => 'هذا الشهر',      'fr' => 'ce mois'],
+    
+    // ===== Reports =====
+    'Reports & Analytics'  => ['ar' => 'التقارير والتحليلات','fr' => 'Rapports & Analyses'],
+    'Period:'              => ['ar' => 'الفترة:',        'fr' => 'Période :'],
+    'Last 7 Days'          => ['ar' => 'آخر 7 أيام',     'fr' => '7 derniers jours'],
+    'Last 30 Days'         => ['ar' => 'آخر 30 يوم',     'fr' => '30 derniers jours'],
+    'Last 90 Days'         => ['ar' => 'آخر 90 يوم',     'fr' => '90 derniers jours'],
+    'Last Year'            => ['ar' => 'العام الماضي',   'fr' => "L'année dernière"],
+    'Print'                => ['ar' => 'طباعة',          'fr' => 'Imprimer'],
+    'Export CSV'           => ['ar' => 'تصدير CSV',      'fr' => 'Exporter CSV'],
+    'TOTAL REVENUE'        => ['ar' => 'إجمالي الإيرادات','fr' => 'REVENU TOTAL'],
+    'GROSS PROFIT'         => ['ar' => 'الربح الإجمالي', 'fr' => 'BÉNÉFICE BRUT'],
+    'TOTAL EXPENSES'       => ['ar' => 'إجمالي المصاريف','fr' => 'DÉPENSES TOTALES'],
+    'NET PROFIT'           => ['ar' => 'صافي الربح',     'fr' => 'BÉNÉFICE NET'],
+    'AVG TRANSACTION'      => ['ar' => 'متوسط المعاملة', 'fr' => 'TRANSACTION MOY.'],
+    'TOTAL ITEMS SOLD'     => ['ar' => 'إجمالي العناصر المباعة','fr' => 'ARTICLES VENDUS'],
+    'From sales'           => ['ar' => 'من المبيعات',    'fr' => 'Des ventes'],
+    'Operating costs'      => ['ar' => 'تكاليف التشغيل', 'fr' => "Coûts d'exploitation"],
+    'Profit'               => ['ar' => 'ربح',            'fr' => 'Bénéfice'],
+    'Per sale'             => ['ar' => 'لكل بيع',        'fr' => 'Par vente'],
+    'Units'                => ['ar' => 'وحدات',          'fr' => 'Unités'],
+    'Daily Revenue Trend'  => ['ar' => 'اتجاه الإيرادات اليومية','fr' => 'Tendance des revenus quotidiens'],
+    'Top Selling Products' => ['ar' => 'المنتجات الأكثر مبيعاً','fr' => 'Produits les plus vendus'],
+    'Top Customers'        => ['ar' => 'أفضل الزبائن',   'fr' => 'Meilleurs clients'],
+    'Top Performing Cashiers' => ['ar' => 'أفضل الكاشيرات أداءً','fr' => 'Meilleurs caissiers'],
+    'units'                => ['ar' => 'وحدات',          'fr' => 'unités'],
+    'sales'                => ['ar' => 'مبيعات',         'fr' => 'ventes'],
+    'DT profit'            => ['ar' => 'دينار ربح',      'fr' => 'DT bénéfice'],
+    
+    // ===== POS =====
+    'Cart'                 => ['ar' => 'السلة',          'fr' => 'Panier'],
+    'Cart is empty'        => ['ar' => 'السلة فارغة',    'fr' => 'Le panier est vide'],
+    'Click products to add'=> ['ar' => 'انقر على المنتجات للإضافة','fr' => 'Cliquez sur les produits'],
+    'Clear'                => ['ar' => 'مسح',            'fr' => 'Vider'],
+    'Subtotal'             => ['ar' => 'المجموع الفرعي', 'fr' => 'Sous-total'],
+    'Tax'                  => ['ar' => 'الضريبة',        'fr' => 'Taxe'],
+    'TOTAL'                => ['ar' => 'المجموع',        'fr' => 'TOTAL'],
+    'Cash'                 => ['ar' => 'نقدي',           'fr' => 'Espèces'],
+    'Card'                 => ['ar' => 'بطاقة',          'fr' => 'Carte'],
+    'Checkout'             => ['ar' => 'الدفع',          'fr' => 'Paiement'],
+    'Select Customer'      => ['ar' => 'اختيار زبون',    'fr' => 'Sélectionner un client'],
+    'Complete Sale'        => ['ar' => 'إتمام البيع',    'fr' => 'Finaliser la vente'],
+    'Total to pay:'        => ['ar' => 'المبلغ المطلوب:','fr' => 'Total à payer :'],
+    'Cash Received'        => ['ar' => 'المبلغ المستلم', 'fr' => 'Montant reçu'],
+    'Change'               => ['ar' => 'الباقي',         'fr' => 'Monnaie'],
+    'Confirm'              => ['ar' => 'تأكيد',          'fr' => 'Confirmer'],
+    'Cancel'               => ['ar' => 'إلغاء',          'fr' => 'Annuler'],
+    'Sale Complete!'       => ['ar' => 'تمت عملية البيع!','fr' => 'Vente terminée !'],
+    'Invoice:'             => ['ar' => 'الفاتورة:',      'fr' => 'Facture :'],
+    'Save'                 => ['ar' => 'حفظ',            'fr' => 'Enregistrer'],
+    'Close'                => ['ar' => 'إغلاق',          'fr' => 'Fermer'],
+    'Search...'            => ['ar' => 'بحث...',         'fr' => 'Rechercher...'],
+    'Logout'               => ['ar' => 'خروج',           'fr' => 'Déconnexion'],
+    'Admin'                => ['ar' => 'الإدارة',        'fr' => 'Admin'],
+    'All'                  => ['ar' => 'الكل',           'fr' => 'Tout'],
+    'OUT'                  => ['ar' => 'نفذ',            'fr' => 'ÉPUISÉ'],
 ];
 
+// ============================================================
+// ✅ AUTO TRANSLATE - Replaces all English text automatically
+// ============================================================
+function autoTranslatePage($html) {
+    global $autoTranslate, $currentLang;
+    
+    if ($currentLang === 'en') return $html; // No translation needed
+    
+    // Sort by length (longest first) to avoid partial replacements
+    uksort($autoTranslate, function($a, $b) {
+        return strlen($b) - strlen($a);
+    });
+    
+    foreach ($autoTranslate as $english => $translations) {
+        if (!isset($translations[$currentLang])) continue;
+        
+        $translated = $translations[$currentLang];
+        
+        // Replace inside HTML text content (not attributes)
+        // Use word boundary to avoid partial matches
+        $pattern = '/(?<![a-zA-Z])' . preg_quote($english, '/') . '(?![a-zA-Z])/u';
+        $html = preg_replace($pattern, $translated, $html);
+    }
+    
+    return $html;
+}
+
+// ============================================================
+// ✅ Start output buffer - captures all output for translation
+// ============================================================
+function startAutoTranslate() {
+    ob_start();
+}
+
+// ============================================================
+// ✅ End buffer + apply translations + inject RTL/dir
+// ============================================================
+function endAutoTranslate() {
+    global $currentLang;
+    $html = ob_get_clean();
+    
+    // Auto translate
+    $html = autoTranslatePage($html);
+    
+    // Auto add dir="rtl" or "ltr" to <html> tag
+    $dir = getLangDir();
+    $html = preg_replace(
+        '/<html\s*([^>]*)>/i',
+        '<html lang="' . $currentLang . '" dir="' . $dir . '" $1>',
+        $html,
+        1
+    );
+    
+    echo $html;
+}
+
+// ============================================================
+// ✅ Helper functions
+// ============================================================
 function __($key) {
-    global $translations, $currentLang;
-    return $translations[$currentLang][$key] ?? $translations['en'][$key] ?? $key;
+    global $autoTranslate, $currentLang;
+    if ($currentLang === 'en') return $key;
+    return $autoTranslate[$key][$currentLang] ?? $key;
 }
 
 function getLangDir() {
@@ -268,8 +270,20 @@ function renderLangSwitcher() {
 }
 
 function renderLangJS() {
-    global $translations, $currentLang;
-    $json = json_encode($translations[$currentLang], JSON_UNESCAPED_UNICODE);
+    global $autoTranslate, $currentLang;
+    $simple = [];
+    foreach ($autoTranslate as $en => $translations) {
+        $simple[$en] = $translations[$currentLang] ?? $en;
+    }
+    $json = json_encode($simple, JSON_UNESCAPED_UNICODE);
     return '<script>var LANG = ' . $json . ';</script>';
 }
+
+// ============================================================
+// ✅ AUTO-START translation buffer
+// ============================================================
+startAutoTranslate();
+
+// Register shutdown to apply translation automatically
+register_shutdown_function('endAutoTranslate');
 ?>
