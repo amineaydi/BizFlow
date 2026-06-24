@@ -1,5 +1,9 @@
 <?php
-// BizFlow - Auto Translation System
+// ============================================================
+// 🌍 BizFlow - Complete Auto-Translation System
+// Supports: English (en), Arabic (ar), French (fr)
+// Auto-translates ALL output on the page
+// ============================================================
 
 function getCurrentLang() {
     $allowed = ['en', 'ar', 'fr'];
@@ -38,38 +42,8 @@ $langMeta = [
 
 // ============================================================
 // 🌍 AUTO TRANSLATION DICTIONARY
-// Format: 'English Text' => ['ar' => 'Arabic', 'fr' => 'French']
-// The system will automatically replace English text on the page!
 // ============================================================
 $autoTranslate = [
-        // ===== POS Old Keys (compatibility) =====
-    'cart_empty'           => ['ar' => 'السلة فارغة',    'fr' => 'Le panier est vide'],
-    'click_to_add'         => ['ar' => 'انقر على المنتجات للإضافة','fr' => 'Cliquez sur les produits'],
-    'add_customer'         => ['ar' => '👤 إضافة زبون (اختياري)','fr' => '👤 Ajouter un client (optionnel)'],
-    'search_products'      => ['ar' => '🔍 البحث عن المنتجات...','fr' => '🔍 Rechercher des produits...'],
-    'cart'                 => ['ar' => 'السلة',          'fr' => 'Panier'],
-    'clear'                => ['ar' => 'مسح',            'fr' => 'Vider'],
-    'subtotal'             => ['ar' => 'المجموع الفرعي', 'fr' => 'Sous-total'],
-    'tax'                  => ['ar' => 'الضريبة',        'fr' => 'Taxe'],
-    'total'                => ['ar' => 'المجموع',        'fr' => 'TOTAL'],
-    'cash'                 => ['ar' => 'نقدي',           'fr' => 'Espèces'],
-    'card'                 => ['ar' => 'بطاقة',          'fr' => 'Carte'],
-    'checkout'             => ['ar' => 'الدفع',          'fr' => 'Paiement'],
-    'select_customer'      => ['ar' => 'اختيار زبون',    'fr' => 'Sélectionner un client'],
-    'complete_sale'        => ['ar' => 'إتمام البيع',    'fr' => 'Finaliser la vente'],
-    'total_to_pay'         => ['ar' => 'المبلغ المطلوب:','fr' => 'Total à payer :'],
-    'cash_received'        => ['ar' => 'المبلغ المستلم', 'fr' => 'Montant reçu'],
-    'change'               => ['ar' => 'الباقي',         'fr' => 'Monnaie'],
-    'confirm'              => ['ar' => 'تأكيد',          'fr' => 'Confirmer'],
-    'cancel'               => ['ar' => 'إلغاء',          'fr' => 'Annuler'],
-    'sale_complete'        => ['ar' => 'تمت عملية البيع!','fr' => 'Vente terminée !'],
-    'invoice'              => ['ar' => 'الفاتورة',       'fr' => 'Facture'],
-    'new_sale'             => ['ar' => 'بيع جديد',       'fr' => 'Nouvelle vente'],
-    'all'                  => ['ar' => 'الكل',           'fr' => 'Tout'],
-    'admin'                => ['ar' => 'الإدارة',        'fr' => 'Admin'],
-    'logout'               => ['ar' => 'خروج',           'fr' => 'Déconnexion'],
-    'pos_terminal'         => ['ar' => 'نقطة البيع',     'fr' => 'Point de Vente'],
-    'search'               => ['ar' => '🔍 بحث...',       'fr' => '🔍 Rechercher...'],
 
     // ===== Sidebar Sections =====
     'OVERVIEW'             => ['ar' => 'نظرة عامة',      'fr' => 'APERÇU'],
@@ -169,7 +143,7 @@ $autoTranslate = [
     'sales'                => ['ar' => 'مبيعات',         'fr' => 'ventes'],
     'DT profit'            => ['ar' => 'دينار ربح',      'fr' => 'DT bénéfice'],
     
-    // ===== POS =====
+    // ===== POS (English text) =====
     'Cart'                 => ['ar' => 'السلة',          'fr' => 'Panier'],
     'Cart is empty'        => ['ar' => 'السلة فارغة',    'fr' => 'Le panier est vide'],
     'Click products to add'=> ['ar' => 'انقر على المنتجات للإضافة','fr' => 'Cliquez sur les produits'],
@@ -196,57 +170,133 @@ $autoTranslate = [
     'Admin'                => ['ar' => 'الإدارة',        'fr' => 'Admin'],
     'All'                  => ['ar' => 'الكل',           'fr' => 'Tout'],
     'OUT'                  => ['ar' => 'نفذ',            'fr' => 'ÉPUISÉ'],
+    
+    // ===== Categories (DB names) =====
+    'Food'                 => ['ar' => 'طعام',           'fr' => 'Nourriture'],
+    'Drinks'               => ['ar' => 'مشروبات',        'fr' => 'Boissons'],
+    'Snacks'               => ['ar' => 'وجبات خفيفة',    'fr' => 'Collations'],
+    'Electronics'          => ['ar' => 'إلكترونيات',     'fr' => 'Électronique'],
+    'Clothing'             => ['ar' => 'ملابس',          'fr' => 'Vêtements'],
+    'Other'                => ['ar' => 'أخرى',           'fr' => 'Autre'],
 ];
 
 // ============================================================
-// ✅ AUTO TRANSLATE - Replaces all English text automatically
+// 🔄 OLD KEY COMPATIBILITY MAP (for pos.php using __('cart_empty'))
+// ============================================================
+$oldKeyMap = [
+    'cart_empty'           => 'Cart is empty',
+    'click_to_add'         => 'Click products to add',
+    'add_customer'         => '👤 Add Customer (optional)',
+    'search_products'      => '🔍 Search products...',
+    'cart'                 => 'Cart',
+    'clear'                => 'Clear',
+    'subtotal'             => 'Subtotal',
+    'tax'                  => 'Tax',
+    'total'                => 'TOTAL',
+    'cash'                 => 'Cash',
+    'card'                 => 'Card',
+    'checkout'             => 'Checkout',
+    'select_customer'      => 'Select Customer',
+    'complete_sale'        => 'Complete Sale',
+    'total_to_pay'         => 'Total to pay:',
+    'cash_received'        => 'Cash Received',
+    'change'               => 'Change',
+    'confirm'              => 'Confirm',
+    'cancel'               => 'Cancel',
+    'sale_complete'        => 'Sale Complete!',
+    'invoice'              => 'Invoice',
+    'new_sale'             => 'New Sale',
+    'all'                  => 'All',
+    'admin'                => 'Admin',
+    'logout'               => 'Logout',
+    'pos_terminal'         => 'POS Terminal',
+    'admin_panel'          => 'Admin Panel',
+    'search'               => '🔍 Search...',
+    'no_products'          => 'No products found',
+    'no_customers'         => 'No customers found',
+    'no_more_stock'        => 'No more stock',
+    'stock_limit'          => 'Stock limit reached',
+    'clear_cart_confirm'   => 'Clear cart?',
+    'insufficient'         => 'Insufficient amount',
+    'server_error'         => 'Server error',
+    'network_error'        => 'Network error',
+    'sale_failed'          => 'Sale failed',
+    'out'                  => 'OUT',
+];
+
+// ============================================================
+// ✅ AUTO TRANSLATE function - replaces English text on page
+// SAFER VERSION: Avoids breaking JS, only translates HTML text
 // ============================================================
 function autoTranslatePage($html) {
     global $autoTranslate, $currentLang;
     
-    if ($currentLang === 'en') return $html; // No translation needed
+    if ($currentLang === 'en') return $html;
     
-    // Sort by length (longest first) to avoid partial replacements
-    uksort($autoTranslate, function($a, $b) {
+    // Extract <script>, <style>, and JSON sections so we don't touch them
+    $placeholders = [];
+    $counter = 0;
+    
+    // Save <script> blocks
+    $html = preg_replace_callback('/<script\b[^>]*>[\s\S]*?<\/script>/i', function($m) use (&$placeholders, &$counter) {
+        $key = "___SCRIPT_PLACEHOLDER_{$counter}___";
+        $placeholders[$key] = $m[0];
+        $counter++;
+        return $key;
+    }, $html);
+    
+    // Save <style> blocks
+    $html = preg_replace_callback('/<style\b[^>]*>[\s\S]*?<\/style>/i', function($m) use (&$placeholders, &$counter) {
+        $key = "___STYLE_PLACEHOLDER_{$counter}___";
+        $placeholders[$key] = $m[0];
+        $counter++;
+        return $key;
+    }, $html);
+    
+    // Sort translations by length (longest first)
+    $items = $autoTranslate;
+    uksort($items, function($a, $b) {
         return strlen($b) - strlen($a);
     });
     
-    foreach ($autoTranslate as $english => $translations) {
+    // Replace each English word with its translation
+    foreach ($items as $english => $translations) {
         if (!isset($translations[$currentLang])) continue;
-        
         $translated = $translations[$currentLang];
         
-        // Replace inside HTML text content (not attributes)
         // Use word boundary to avoid partial matches
-        $pattern = '/(?<![a-zA-Z])' . preg_quote($english, '/') . '(?![a-zA-Z])/u';
+        $pattern = '/(?<![a-zA-Z0-9_])' . preg_quote($english, '/') . '(?![a-zA-Z0-9_])/u';
         $html = preg_replace($pattern, $translated, $html);
+    }
+    
+    // Restore <script> and <style> blocks
+    foreach ($placeholders as $key => $original) {
+        $html = str_replace($key, $original, $html);
     }
     
     return $html;
 }
 
 // ============================================================
-// ✅ Start output buffer - captures all output for translation
+// ✅ Output buffer functions
 // ============================================================
 function startAutoTranslate() {
     ob_start();
 }
 
-// ============================================================
-// ✅ End buffer + apply translations + inject RTL/dir
-// ============================================================
 function endAutoTranslate() {
     global $currentLang;
-    $html = ob_get_clean();
     
-    // Auto translate
+    if (!ob_get_level()) return;
+    
+    $html = ob_get_clean();
     $html = autoTranslatePage($html);
     
-    // Auto add dir="rtl" or "ltr" to <html> tag
+    // Auto add dir and lang to <html> tag
     $dir = getLangDir();
     $html = preg_replace(
-        '/<html\s*([^>]*)>/i',
-        '<html lang="' . $currentLang . '" dir="' . $dir . '" $1>',
+        '/<html\b([^>]*)>/i',
+        '<html lang="' . $currentLang . '" dir="' . $dir . '"$1>',
         $html,
         1
     );
@@ -255,49 +305,24 @@ function endAutoTranslate() {
 }
 
 // ============================================================
-// ✅ Helper functions
+// ✅ __() function - works with both old keys AND English text
 // ============================================================
 function __($key) {
-    global $autoTranslate, $currentLang;
+    global $autoTranslate, $oldKeyMap, $currentLang;
     
-    // English version map for old keys
-    $englishMap = [
-        'cart_empty' => 'Cart is empty',
-        'click_to_add' => 'Click products to add',
-        'add_customer' => '👤 Add Customer (optional)',
-        'search_products' => '🔍 Search products...',
-        'cart' => 'Cart',
-        'clear' => 'Clear',
-        'subtotal' => 'Subtotal',
-        'tax' => 'Tax',
-        'total' => 'TOTAL',
-        'cash' => 'Cash',
-        'card' => 'Card',
-        'checkout' => 'Checkout',
-        'select_customer' => 'Select Customer',
-        'complete_sale' => 'Complete Sale',
-        'total_to_pay' => 'Total to pay:',
-        'cash_received' => 'Cash Received',
-        'change' => 'Change',
-        'confirm' => 'Confirm',
-        'cancel' => 'Cancel',
-        'sale_complete' => 'Sale Complete!',
-        'invoice' => 'Invoice',
-        'new_sale' => 'New Sale',
-        'all' => 'All',
-        'admin' => 'Admin',
-        'logout' => 'Logout',
-        'pos_terminal' => 'POS Terminal',
-        'search' => '🔍 Search...',
-    ];
+    // If old key, convert to English first
+    $englishText = $oldKeyMap[$key] ?? $key;
     
-    if ($currentLang === 'en') {
-        return $englishMap[$key] ?? $key;
-    }
+    // If English, return the English text directly
+    if ($currentLang === 'en') return $englishText;
     
-    return $autoTranslate[$key][$currentLang] ?? ($englishMap[$key] ?? $key);
+    // Look up translation
+    return $autoTranslate[$englishText][$currentLang] ?? $englishText;
 }
 
+// ============================================================
+// ✅ Helper functions
+// ============================================================
 function getLangDir() {
     global $langMeta, $currentLang;
     return $langMeta[$currentLang]['dir'] ?? 'ltr';
@@ -346,7 +371,5 @@ function renderLangJS() {
 // ✅ AUTO-START translation buffer
 // ============================================================
 startAutoTranslate();
-
-// Register shutdown to apply translation automatically
 register_shutdown_function('endAutoTranslate');
 ?>
