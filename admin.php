@@ -2,6 +2,7 @@
 session_start();
 require_once 'db.php';
 require_once 'theme.php';
+require_once 'lang.php';
 
 requireAdminLogin();
 
@@ -38,7 +39,7 @@ $monthExpenses = $conn->query("
 $monthProfit = $monthStats['revenue'] - $monthExpenses;
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= $currentLang ?>" dir="<?= getLangDir() ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -49,6 +50,56 @@ $monthProfit = $monthStats['revenue'] - $monthExpenses;
 <link rel="manifest" href="manifest_admin.json">
 <?= renderThemeCSS($theme) ?>
 <style>
+.lang-switcher { position: relative; }
+.lang-btn {
+    background: var(--bg-dark);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 6px 12px;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.lang-btn:hover { background: var(--primary); }
+.lang-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 6px;
+    z-index: 9000;
+    min-width: 160px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+[dir="rtl"] .lang-dropdown { right: auto; left: 0; }
+.lang-dropdown.show { display: block; }
+.lang-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    text-decoration: none;
+    transition: 0.15s;
+}
+.lang-option:hover { background: rgba(255,255,255,0.06); }
+.lang-option.active { background: rgba(59,130,246,0.15); color: var(--primary); }
+.lang-option .flag { font-size: 20px; }
+.lang-option .check { margin-left: auto; opacity: 0; }
+.lang-option.active .check { opacity: 1; }
+[dir="rtl"] .lang-option .check { margin-left: 0; margin-right: auto; }    
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
 body {
@@ -963,7 +1014,7 @@ select.form-select {
         </div>
         
         <div class="content">
-            
+           <?= renderLangSwitcher() ?> 
             <?php if (isset($_GET['msg'])): ?>
                 <div class="alert success">✅ <?= htmlspecialchars($_GET['msg']) ?></div>
             <?php endif; ?>
@@ -2086,6 +2137,21 @@ select.form-select {
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
+    // Language dropdown
+var langToggle = document.getElementById('langToggle');
+if (langToggle) {
+    langToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('langDropdown').classList.toggle('show');
+    });
+}
+document.addEventListener('click', function(e) {
+    var dropdown = document.getElementById('langDropdown');
+    var toggle = document.getElementById('langToggle');
+    if (dropdown && toggle && !toggle.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
 // ===== CHART DATA FROM PHP =====
 const CHART_DATA = {
     daily: <?= json_encode(array_map(function($d) {
