@@ -1224,93 +1224,26 @@ select.form-select {
             </div>
             
             <!-- ===== CATEGORIES TAB ===== -->
-           <!-- Add Category Modal -->
-<div class="modal" id="addCategoryModal">
-    <div class="modal-content">
-        <div class="modal-title">➕ <?= __('Add Category') ?></div>
-        
-        <label><?= __('Category Name') ?> 🇬🇧</label>
-        <input type="text" id="catName" class="form-input" 
-               placeholder="e.g. Drinks" 
-               oninput="suggestTranslations(this.value, 'cat')">
-        
-        <div style="margin-top:15px;">
-            <button type="button" 
-                    onclick="document.getElementById('catTranslations').classList.toggle('show')" 
-                    style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;">
-                🌍 <?= __('Show Translations') ?> ▼
-            </button>
-        </div>
-        
-        <div id="catTranslations" class="translations-section" style="display:none;">
-            <div style="margin-top:12px;">
-                <label>🇸🇦 <?= __('Arabic Name') ?> <span style="color:#9ca3af;font-size:10px;">(<?= __('optional') ?>)</span></label>
-                <input type="text" id="catNameAr" class="form-input" 
-                       placeholder="مثال: مشروبات" 
-                       dir="rtl">
-                <small id="catArSuggest" style="color:#10b981;display:none;">
-                    ✨ <?= __('Auto-suggested') ?>
-                </small>
+            <div class="tab-content" id="tab-categories">
+                <div class="card">
+                    <div class="card-head">
+                        <div class="card-title">📂 Categories</div>
+                        <button class="btn" onclick="openModal('categoryModal')">➕ Add</button>
+                    </div>
+                    
+                    <?php $cats = $conn->query("SELECT * FROM categories WHERE business_id = $bid ORDER BY name"); ?>
+                    
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;">
+                        <?php while ($c = $cats->fetch_assoc()): ?>
+                            <div style="background:var(--bg-dark);padding:18px;border-radius:14px;border-left:4px solid <?= $c['color'] ?>;">
+                                <div style="font-size:32px;margin-bottom:8px;"><?= htmlspecialchars($c['icon']) ?></div>
+                                <div style="font-weight:800;font-size:16px;"><?= htmlspecialchars($c['name']) ?></div>
+                                <button class="btn-sm" style="margin-top:10px;color:#ef4444;" onclick="deleteItem('category', <?= $c['id'] ?>, '<?= addslashes($c['name']) ?>')">🗑️ Delete</button>
+                            </div>
+                        <?php endwhile; ?>
+                    </div>
+                </div>
             </div>
-            
-            <div style="margin-top:12px;">
-                <label>🇫🇷 <?= __('French Name') ?> <span style="color:#9ca3af;font-size:10px;">(<?= __('optional') ?>)</span></label>
-                <input type="text" id="catNameFr" class="form-input" 
-                       placeholder="ex: Boissons">
-                <small id="catFrSuggest" style="color:#10b981;display:none;">
-                    ✨ <?= __('Auto-suggested') ?>
-                </small>
-            </div>
-        </div>
-        
-        <label style="margin-top:15px;"><?= __('Icon') ?> (emoji)</label>
-        <input type="text" id="catIcon" class="form-input" placeholder="📦" maxlength="2">
-        
-        <div style="display:flex;gap:10px;margin-top:20px;">
-            <button class="btn-secondary" onclick="closeModal('addCategoryModal')">
-                <?= __('Cancel') ?>
-            </button>
-            <button class="btn-primary" onclick="saveCategory()">
-                💾 <?= __('Save') ?>
-            </button>
-        </div>
-    </div>
-</div>
-
-<style>
-.translations-section.show {
-    display: block !important;
-    animation: slideDown 0.3s ease;
-}
-@keyframes slideDown {
-    from { opacity: 0; max-height: 0; }
-    to { opacity: 1; max-height: 500px; }
-}
-.btn-primary {
-    flex: 1;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-    border: none;
-    padding: 14px;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 14px;
-}
-.btn-secondary {
-    flex: 1;
-    background: rgba(255,255,255,0.05);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.1);
-    padding: 14px;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 14px;
-}
-</style>
             
             <!-- ===== CUSTOMERS TAB ===== -->
             <div class="tab-content" id="tab-customers">
@@ -2487,40 +2420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="modal-title" id="productModalTitle">➕ Add Product</div>
             <button class="close-btn" onclick="closeModal('productModal')">✕</button>
         </div>
-        <!-- Inside your Add Product modal, after the name field -->
-
-<label><?= __('Product Name') ?> 🇬🇧</label>
-<input type="text" id="prodName" class="form-input" 
-       placeholder="e.g. Coffee" 
-       oninput="suggestTranslations(this.value, 'prod')">
-
-<div style="margin-top:10px;">
-    <button type="button" 
-            onclick="document.getElementById('prodTranslations').classList.toggle('show')" 
-            style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:13px;">
-        🌍 <?= __('Show Translations') ?> ▼
-    </button>
-</div>
-
-<div id="prodTranslations" class="translations-section" style="display:none;">
-    <div style="margin-top:12px;">
-        <label>🇸🇦 <?= __('Arabic Name') ?></label>
-        <input type="text" id="prodNameAr" class="form-input" 
-               placeholder="مثال: قهوة" dir="rtl">
-        <small id="prodArSuggest" style="color:#10b981;display:none;">
-            ✨ <?= __('Auto-suggested') ?>
-        </small>
-    </div>
-    
-    <div style="margin-top:12px;">
-        <label>🇫🇷 <?= __('French Name') ?></label>
-        <input type="text" id="prodNameFr" class="form-input" 
-               placeholder="ex: Café">
-        <small id="prodFrSuggest" style="color:#10b981;display:none;">
-            ✨ <?= __('Auto-suggested') ?>
-        </small>
-    </div>
-</div>
+        
         <form method="POST" action="admin_action.php">
             <input type="hidden" name="action" value="add_product" id="productAction">
             <input type="hidden" name="product_id" id="productId">
@@ -2873,178 +2773,6 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <script>
-    // ============================================================
-// 🌍 Smart Translation Suggestion
-// Suggests translations as user types
-// ============================================================
-
-// Dictionary of common terms (matches your lang.php $autoTranslate)
-var TRANSLATION_DICT = {
-    // Categories
-    'Drinks':      { ar: 'مشروبات',       fr: 'Boissons' },
-    'Food':        { ar: 'طعام',          fr: 'Nourriture' },
-    'Snacks':      { ar: 'وجبات خفيفة',   fr: 'Collations' },
-    'Electronics': { ar: 'إلكترونيات',    fr: 'Électronique' },
-    'Clothing':    { ar: 'ملابس',         fr: 'Vêtements' },
-    'Other':       { ar: 'أخرى',          fr: 'Autre' },
-    'Coffee':      { ar: 'قهوة',          fr: 'Café' },
-    'Tea':         { ar: 'شاي',           fr: 'Thé' },
-    'Water':       { ar: 'ماء',           fr: 'Eau' },
-    'Bread':       { ar: 'خبز',           fr: 'Pain' },
-    'Milk':        { ar: 'حليب',          fr: 'Lait' },
-    'Sugar':       { ar: 'سكر',           fr: 'Sucre' },
-    'Salt':        { ar: 'ملح',           fr: 'Sel' },
-    'Cheese':      { ar: 'جبن',           fr: 'Fromage' },
-    'Chicken':     { ar: 'دجاج',          fr: 'Poulet' },
-    'Meat':        { ar: 'لحم',           fr: 'Viande' },
-    'Fish':        { ar: 'سمك',           fr: 'Poisson' },
-    'Rice':        { ar: 'أرز',           fr: 'Riz' },
-    'Pasta':       { ar: 'معكرونة',       fr: 'Pâtes' },
-    'Pizza':       { ar: 'بيتزا',         fr: 'Pizza' },
-    'Burger':      { ar: 'برغر',          fr: 'Burger' },
-    'Sandwich':    { ar: 'ساندويتش',      fr: 'Sandwich' },
-    'Salad':       { ar: 'سلطة',          fr: 'Salade' },
-    'Soup':        { ar: 'شوربة',         fr: 'Soupe' },
-    'Dessert':     { ar: 'حلوى',          fr: 'Dessert' },
-    'Cake':        { ar: 'كيك',           fr: 'Gâteau' },
-    'Ice Cream':   { ar: 'آيس كريم',      fr: 'Glace' },
-    'Juice':       { ar: 'عصير',          fr: 'Jus' },
-    'Soda':        { ar: 'صودا',          fr: 'Soda' },
-    'Beer':        { ar: 'بيرة',          fr: 'Bière' },
-    'Wine':        { ar: 'نبيذ',          fr: 'Vin' },
-    'Chips':       { ar: 'شيبس',          fr: 'Chips' },
-    'Chocolate':   { ar: 'شوكولاتة',      fr: 'Chocolat' },
-    'Candy':       { ar: 'حلوى',          fr: 'Bonbons' },
-    'Cookies':     { ar: 'بسكويت',        fr: 'Biscuits' },
-    'T-Shirt':     { ar: 'تيشيرت',        fr: 'T-Shirt' },
-    'Pants':       { ar: 'بنطلون',        fr: 'Pantalon' },
-    'Shoes':       { ar: 'حذاء',          fr: 'Chaussures' },
-    'Dress':       { ar: 'فستان',         fr: 'Robe' },
-    'Phone':       { ar: 'هاتف',          fr: 'Téléphone' },
-    'Laptop':      { ar: 'حاسوب محمول',   fr: 'Ordinateur portable' },
-    'Cable':       { ar: 'كابل',          fr: 'Câble' },
-    'Charger':     { ar: 'شاحن',          fr: 'Chargeur' },
-};
-
-/**
- * Auto-suggest translations as user types
- * @param {string} text - The English text user typed
- * @param {string} prefix - 'cat' or 'prod'
- */
-function suggestTranslations(text, prefix) {
-    text = text.trim();
-    if (!text) return;
-    
-    // Look for exact match (case-insensitive)
-    var match = null;
-    for (var key in TRANSLATION_DICT) {
-        if (key.toLowerCase() === text.toLowerCase()) {
-            match = TRANSLATION_DICT[key];
-            break;
-        }
-    }
-    
-    var arInput = document.getElementById(prefix + 'NameAr');
-    var frInput = document.getElementById(prefix + 'NameFr');
-    var arHint = document.getElementById(prefix + 'ArSuggest');
-    var frHint = document.getElementById(prefix + 'FrSuggest');
-    
-    if (match) {
-        // Auto-fill if empty (don't overwrite user's text)
-        if (arInput && !arInput.value) {
-            arInput.value = match.ar;
-            if (arHint) {
-                arHint.style.display = 'block';
-                setTimeout(function() { arHint.style.display = 'none'; }, 3000);
-            }
-        }
-        if (frInput && !frInput.value) {
-            frInput.value = match.fr;
-            if (frHint) {
-                frHint.style.display = 'block';
-                setTimeout(function() { frHint.style.display = 'none'; }, 3000);
-            }
-        }
-        
-        // Show translations section automatically
-        var section = document.getElementById(prefix + 'Translations');
-        if (section) section.classList.add('show');
-    }
-}
-
-// ============================================================
-// 💾 Save Category with Translations
-// ============================================================
-function saveCategory() {
-    var name = document.getElementById('catName').value.trim();
-    var nameAr = document.getElementById('catNameAr').value.trim();
-    var nameFr = document.getElementById('catNameFr').value.trim();
-    var icon = document.getElementById('catIcon').value.trim();
-    
-    if (!name) {
-        showToast('⚠️ ' + LANG['required'] || 'Name is required', 'error');
-        return;
-    }
-    
-    var formData = new FormData();
-    formData.append('action', 'add_category');
-    formData.append('name', name);
-    formData.append('name_ar', nameAr);
-    formData.append('name_fr', nameFr);
-    formData.append('icon', icon || '📦');
-    
-    fetch('admin_action.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (res.success) {
-            showToast('✅ ' + (LANG['Category added'] || 'Category added'));
-            closeModal('addCategoryModal');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            showToast('❌ ' + (res.message || 'Error'), 'error');
-        }
-    });
-}
-
-// ============================================================
-// 💾 Save Product with Translations
-// ============================================================
-function saveProduct() {
-    var name = document.getElementById('prodName').value.trim();
-    var nameAr = document.getElementById('prodNameAr').value.trim();
-    var nameFr = document.getElementById('prodNameFr').value.trim();
-    // ... add other fields (price, stock, category, etc.)
-    
-    if (!name) {
-        showToast('⚠️ Name is required', 'error');
-        return;
-    }
-    
-    var formData = new FormData();
-    formData.append('action', 'add_product');
-    formData.append('name', name);
-    formData.append('name_ar', nameAr);
-    formData.append('name_fr', nameFr);
-    // ... append other fields
-    
-    fetch('admin_action.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (res.success) {
-            showToast('✅ Product added');
-            closeModal('addProductModal');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            showToast('❌ ' + (res.message || 'Error'), 'error');
-        }
-    });
-}
 // ===== MOBILE SIDEBAR =====
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
