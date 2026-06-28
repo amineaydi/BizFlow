@@ -372,4 +372,51 @@ function renderLangJS() {
 // ============================================================
 startAutoTranslate();
 register_shutdown_function('endAutoTranslate');
+// ============================================================
+// ✅ Get translated name for DB items (categories, products)
+// ============================================================
+function getTranslatedName($item) {
+    global $currentLang;
+    
+    if ($currentLang === 'ar' && !empty($item['name_ar'])) {
+        return $item['name_ar'];
+    }
+    if ($currentLang === 'fr' && !empty($item['name_fr'])) {
+        return $item['name_fr'];
+    }
+    return $item['name']; // fallback to original (English)
+}
+
+// ============================================================
+// ✅ Get translated description for DB items
+// ============================================================
+function getTranslatedDescription($item) {
+    global $currentLang;
+    
+    if ($currentLang === 'ar' && !empty($item['description_ar'])) {
+        return $item['description_ar'];
+    }
+    if ($currentLang === 'fr' && !empty($item['description_fr'])) {
+        return $item['description_fr'];
+    }
+    return $item['description'] ?? '';
+}
+
+// ============================================================
+// ✅ Smart auto-translate (uses dictionary)
+// Used in JS to suggest translations
+// ============================================================
+function getSmartTranslations($text) {
+    global $autoTranslate;
+    
+    $result = ['ar' => '', 'fr' => ''];
+    
+    // Check if exact match exists in dictionary
+    if (isset($autoTranslate[$text])) {
+        $result['ar'] = $autoTranslate[$text]['ar'] ?? '';
+        $result['fr'] = $autoTranslate[$text]['fr'] ?? '';
+    }
+    
+    return $result;
+}
 ?>
