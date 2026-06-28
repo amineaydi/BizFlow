@@ -424,7 +424,113 @@ if ($action === 'change_password') {
     
     redirectBack('settings', 'Password changed successfully!');
 }
+// ============================================================
+// ADD CATEGORY (with translations)
+// ============================================================
+case 'add_category':
+    $name = trim($_POST['name'] ?? '');
+    $nameAr = trim($_POST['name_ar'] ?? '');
+    $nameFr = trim($_POST['name_fr'] ?? '');
+    $icon = trim($_POST['icon'] ?? '📦');
+    
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'Name required']);
+        exit;
+    }
+    
+    $stmt = $conn->prepare("
+        INSERT INTO categories 
+        (business_id, name, name_ar, name_fr, icon, is_active, created_at)
+        VALUES (?, ?, ?, ?, ?, 1, NOW())
+    ");
+    $stmt->bind_param("issss", $bid, $name, $nameAr, $nameFr, $icon);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'id' => $conn->insert_id]);
+    } else {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+    }
+    exit;
 
+// ============================================================
+// ADD PRODUCT (with translations)
+// ============================================================
+case 'add_product':
+    $name = trim($_POST['name'] ?? '');
+    $nameAr = trim($_POST['name_ar'] ?? '');
+    $nameFr = trim($_POST['name_fr'] ?? '');
+    $price = floatval($_POST['price'] ?? 0);
+    $stock = intval($_POST['stock'] ?? 0);
+    $categoryId = intval($_POST['category_id'] ?? 0);
+    // ... other fields
+    
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'Name required']);
+        exit;
+    }
+    
+    $stmt = $conn->prepare("
+        INSERT INTO products 
+        (business_id, name, name_ar, name_fr, selling_price, stock_quantity, 
+         category_id, is_active, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
+    ");
+    $stmt->bind_param("isssdii", $bid, $name, $nameAr, $nameFr, $price, $stock, $categoryId);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'id' => $conn->insert_id]);
+    } else {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+    }
+    exit;
+
+// ============================================================
+// EDIT CATEGORY (with translations)
+// ============================================================
+case 'edit_category':
+    $id = intval($_POST['id'] ?? 0);
+    $name = trim($_POST['name'] ?? '');
+    $nameAr = trim($_POST['name_ar'] ?? '');
+    $nameFr = trim($_POST['name_fr'] ?? '');
+    $icon = trim($_POST['icon'] ?? '📦');
+    
+    $stmt = $conn->prepare("
+        UPDATE categories 
+        SET name = ?, name_ar = ?, name_fr = ?, icon = ?
+        WHERE id = ? AND business_id = ?
+    ");
+    $stmt->bind_param("ssssii", $name, $nameAr, $nameFr, $icon, $id, $bid);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+    }
+    exit;
+
+// ============================================================
+// EDIT PRODUCT (with translations)
+// ============================================================
+case 'edit_product':
+    $id = intval($_POST['id'] ?? 0);
+    $name = trim($_POST['name'] ?? '');
+    $nameAr = trim($_POST['name_ar'] ?? '');
+    $nameFr = trim($_POST['name_fr'] ?? '');
+    // ... other fields
+    
+    $stmt = $conn->prepare("
+        UPDATE products 
+        SET name = ?, name_ar = ?, name_fr = ?
+        WHERE id = ? AND business_id = ?
+    ");
+    $stmt->bind_param("sssii", $name, $nameAr, $nameFr, $id, $bid);
+    
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+    }
+    exit;
 // Default - go back to admin
 header("Location: admin.php");
 exit;
