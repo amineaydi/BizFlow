@@ -848,8 +848,8 @@ function renderProducts() {
         if (outOfStock) { badgeClass += ' out'; badgeText = LANG.out; } // ✅ Use LANG
         else if (isLow) badgeClass += ' low';
 
-        var image = p.image_url
-            ? '<img src="' + escapeHtml(p.image_url) + '" alt="" onerror="this.parentElement.innerHTML=\'📦\'">'
+        var image = (p.image_url && p.image_url.length > 20)
+            ? '<img src="' + p.image_url + '" onerror="this.parentElement.innerHTML=\'📦\'">'
             : '📦';
 
         html += '<div class="product-card' + (outOfStock ? ' out-of-stock' : '') + '" data-id="' + p.id + '"' +
