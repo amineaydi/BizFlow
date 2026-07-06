@@ -862,9 +862,8 @@ function renderProducts() {
     }
 
     if (html === '') {
-        html = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">' + LANG.no_products + '</div>';
-    }
-
+    html = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">' + (LANG.no_products || LANG['No products found'] || 'No products found') + '</div>';
+}
     grid.innerHTML = html;
 }
 
