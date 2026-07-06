@@ -50,6 +50,35 @@ $monthProfit = $monthStats['revenue'] - $monthExpenses;
 <link rel="manifest" href="manifest_admin.json">
 <?= renderThemeCSS($theme) ?>
 <style>
+    /* ===== 📸 Image Upload ===== */
+.image-upload-box {
+    width: 100%;
+    min-height: 200px;
+    border: 2px dashed rgba(255,255,255,0.15);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: 0.2s;
+}
+.image-upload-box:hover {
+    border-color: var(--primary);
+    background: rgba(59,130,246,0.05);
+}
+.image-upload-box.dragover {
+    border-color: var(--primary);
+    background: rgba(59,130,246,0.1);
+    transform: scale(1.02);
+}
+.image-upload-box.has-image {
+    border-style: solid;
+    border-color: rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.2);
+}
 .lang-switcher { position: relative; }
 .lang-btn {
     background: var(--bg-dark);
@@ -1184,12 +1213,13 @@ select.form-select {
                             <tbody>
                                 <?php while ($p = $products->fetch_assoc()): ?>
                                     <tr>
-                                        <td data-label="Product">
-                                            <strong><?= htmlspecialchars($p['name']) ?></strong>
-                                            <?php if ($p['sku']): ?>
-                                                <br><small style="color:#9ca3af;">SKU: <?= htmlspecialchars($p['sku']) ?></small>
-                                            <?php endif; ?>
-                                        </td>
+                                        <td style="width:50px;">
+    <?php if (!empty($p['image_url']) && strlen($p['image_url']) > 20): ?>
+        <img src="<?= $p['image_url'] ?>" style="width:40px;height:40px;border-radius:6px;object-fit:cover;">
+    <?php else: ?>
+        <span style="font-size:24px;">📦</span>
+    <?php endif; ?>
+</td>
                                         <td data-label="Category">
                                             <?php if ($p['cat_name']): ?>
                                                 <span class="cat-badge" style="background:<?= $p['cat_color'] ?>20;color:<?= $p['cat_color'] ?>;">
@@ -2415,22 +2445,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <!-- PRODUCT MODAL -->
 <div class="modal" id="productModal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:700px;">
         <div style="display:flex;align-items:center;margin-bottom:20px;">
             <div class="modal-title" id="productModalTitle">➕ Add Product</div>
-            <button class="close-btn" onclick="closeModal('productModal')">✕</button>
+            <button class="close-btn" onclick="closeModal('productModal')">×</button>
         </div>
-        
-        <form method="POST" action="admin_action.php">
+
+        <form method="POST" action="admin_action.php" id="productForm">
             <input type="hidden" name="action" value="add_product" id="productAction">
             <input type="hidden" name="product_id" id="productId">
             
-            <div class="form-group">
-                <label>Product Name *</label>
-                <input type="text" name="name" class="form-input" id="productName" required>
+            <!-- 📸 IMAGE UPLOAD -->
+            <div class="form-group" style="margin-bottom:20px;">
+                <label>📷 Product Image</label>
+                <div class="image-upload-box" id="imageUploadBox" onclick="document.getElementById('imageFileInput').click()">
+                    <img id="imagePreview" src="" alt="Preview" style="display:none;max-width:100%;max-height:250px;border-radius:8px;object-fit:contain;">
+                    <div id="imagePlaceholder" style="text-align:center;color:#6b7280;padding:30px;">
+                        <div style="font-size:50px;margin-bottom:10px;">📷</div>
+                        <div style="font-weight:600;">Click to upload image</div>
+                        <div style="font-size:12px;color:#9ca3af;margin-top:4px;">or drag & drop · Max 5MB</div>
+                    </div>
+                    <button type="button" id="removeImageBtn" onclick="event.stopPropagation();removeImage();" style="display:none;position:absolute;top:8px;right:8px;background:rgba(239,68,68,0.9);color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;">✕ Remove</button>
+                </div>
+                <input type="file" id="imageFileInput" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
+                <input type="hidden" name="image_url" id="productImage" value="">
             </div>
-            
+
             <div class="form-row">
+                <div class="form-group">
+                    <label>Product Name *</label>
+                    <input type="text" name="name" class="form-input" id="productName" required>
+                </div>
                 <div class="form-group">
                     <label>Category</label>
                     <select name="category_id" class="form-select" id="productCategory">
@@ -2439,30 +2484,37 @@ document.addEventListener('DOMContentLoaded', () => {
                         $cats = $conn->query("SELECT * FROM categories WHERE business_id = $bid ORDER BY name");
                         while ($c = $cats->fetch_assoc()):
                         ?>
-                            <option value="<?= $c['id'] ?>"><?= $c['icon'] ?> <?= htmlspecialchars($c['name']) ?></option>
+                        <option value="<?= $c['id'] ?>"><?= $c['icon'] ?> <?= htmlspecialchars($c['name']) ?></option>
                         <?php endwhile; ?>
                     </select>
                 </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label>SKU</label>
                     <input type="text" name="sku" class="form-input" id="productSku">
                 </div>
+                <div class="form-group">
+                    <label>Barcode</label>
+                    <input type="text" name="barcode" class="form-input" id="productBarcode">
+                </div>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Cost Price</label>
-                    <input type="number" step="0.01" name="cost_price" class="form-input" id="productCost" value="0">
+                    <input type="number" step="0.01" name="cost_price" class="form-input" id="productCost">
                 </div>
                 <div class="form-group">
                     <label>Selling Price *</label>
                     <input type="number" step="0.01" name="selling_price" class="form-input" id="productPrice" required>
                 </div>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
-                    <label>Stock</label>
+                    <label>Stock Quantity</label>
                     <input type="number" name="stock_quantity" class="form-input" id="productStock" value="0">
                 </div>
                 <div class="form-group">
@@ -2470,25 +2522,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="number" name="low_stock_threshold" class="form-input" id="productLowStock" value="5">
                 </div>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Unit</label>
                     <select name="unit" class="form-select" id="productUnit">
                         <option value="piece">Piece</option>
-                        <option value="kg">Kilogram</option>
+                        <option value="kg">Kilogram (kg)</option>
+                        <option value="g">Gram (g)</option>
                         <option value="liter">Liter</option>
-                        <option value="meter">Meter</option>
+                        <option value="ml">Milliliter (ml)</option>
                         <option value="box">Box</option>
+                        <option value="pack">Pack</option>
+                        <option value="cup">Cup</option>
+                        <option value="bottle">Bottle</option>
+                        <option value="can">Can</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Image URL</label>
-                    <input type="url" name="image_url" class="form-input" id="productImage" placeholder="https://...">
+                    <label>Description</label>
+                    <input type="text" name="description" class="form-input" id="productDescription">
                 </div>
             </div>
-            
-            <button type="submit" class="btn" style="width:100%;">💾 Save Product</button>
+
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="button" class="btn" style="flex:1;background:rgba(255,255,255,0.1);" onclick="closeModal('productModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;">💾 Save Product</button>
+            </div>
         </form>
     </div>
 </div>
@@ -2852,16 +2912,27 @@ function editProduct(p) {
     document.getElementById('productName').value = p.name;
     document.getElementById('productCategory').value = p.category_id || '';
     document.getElementById('productSku').value = p.sku || '';
+    document.getElementById('productBarcode').value = p.barcode || '';
+    document.getElementById('productDescription').value = p.description || '';
     document.getElementById('productCost').value = p.cost_price;
     document.getElementById('productPrice').value = p.selling_price;
     document.getElementById('productStock').value = p.stock_quantity;
     document.getElementById('productLowStock').value = p.low_stock_threshold;
     document.getElementById('productUnit').value = p.unit;
-    document.getElementById('productImage').value = p.image_url || '';
+    
+    // Image handling
+    var currentImage = p.image_url || '';
+    document.getElementById('productImage').value = currentImage;
+    
+    if (currentImage && currentImage.length > 10) {
+        showImagePreview(currentImage);
+    } else {
+        removeImage();
+    }
+    
     document.getElementById('productModalTitle').textContent = '✏️ Edit Product';
     openModal('productModal');
 }
-
 // ===== STOCK ADJUST =====
 function adjustStock(productId, name) {
     document.getElementById('stockProductId').value = productId;
@@ -2930,6 +3001,155 @@ if (initialTab) {
 }
 
 console.log('🟢 BizFlow Admin Loaded');
+// ============================================================
+// 📸 IMAGE UPLOAD SYSTEM
+// ============================================================
+
+function handleImageSelect(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    processImageFile(file);
+}
+
+function processImageFile(file) {
+    if (!file.type.startsWith('image/')) {
+        showToast('❌ Please select an image file', 'error');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('❌ Image too large! Max 5MB', 'error');
+        return;
+    }
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            resizeAndCompress(img);
+        };
+        img.onerror = function() {
+            showToast('❌ Invalid image', 'error');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function resizeAndCompress(img) {
+    var maxSize = 400;
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    
+    var width = img.width;
+    var height = img.height;
+    
+    if (width > height) {
+        if (width > maxSize) {
+            height = height * (maxSize / width);
+            width = maxSize;
+        }
+    } else {
+        if (height > maxSize) {
+            width = width * (maxSize / height);
+            height = maxSize;
+        }
+    }
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // White background (for transparent PNGs)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, width, height);
+    
+    ctx.drawImage(img, 0, 0, width, height);
+    
+    var base64 = canvas.toDataURL('image/jpeg', 0.8);
+    
+    showImagePreview(base64);
+    document.getElementById('productImage').value = base64;
+    
+    var sizeKB = Math.round(base64.length / 1024);
+    console.log('✅ Image processed: ' + sizeKB + ' KB (' + Math.round(width) + 'x' + Math.round(height) + ')');
+}
+
+function showImagePreview(base64) {
+    var preview = document.getElementById('imagePreview');
+    var placeholder = document.getElementById('imagePlaceholder');
+    var removeBtn = document.getElementById('removeImageBtn');
+    var box = document.getElementById('imageUploadBox');
+    
+    if (preview) {
+        preview.src = base64;
+        preview.style.display = 'block';
+    }
+    if (placeholder) placeholder.style.display = 'none';
+    if (removeBtn) removeBtn.style.display = 'block';
+    if (box) box.classList.add('has-image');
+}
+
+function removeImage() {
+    var preview = document.getElementById('imagePreview');
+    var placeholder = document.getElementById('imagePlaceholder');
+    var removeBtn = document.getElementById('removeImageBtn');
+    var box = document.getElementById('imageUploadBox');
+    var fileInput = document.getElementById('imageFileInput');
+    var hiddenInput = document.getElementById('productImage');
+    
+    if (preview) { preview.src = ''; preview.style.display = 'none'; }
+    if (placeholder) placeholder.style.display = 'block';
+    if (removeBtn) removeBtn.style.display = 'none';
+    if (box) box.classList.remove('has-image');
+    if (fileInput) fileInput.value = '';
+    if (hiddenInput) hiddenInput.value = '';
+}
+
+// Drag & Drop support
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var box = document.getElementById('imageUploadBox');
+        if (!box) return;
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(evt) {
+            box.addEventListener(evt, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+        
+        ['dragenter', 'dragover'].forEach(function(evt) {
+            box.addEventListener(evt, function() {
+                box.classList.add('dragover');
+            });
+        });
+        
+        ['dragleave', 'drop'].forEach(function(evt) {
+            box.addEventListener(evt, function() {
+                box.classList.remove('dragover');
+            });
+        });
+        
+        box.addEventListener('drop', function(e) {
+            var files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processImageFile(files[0]);
+            }
+        });
+    });
+})();
+
+// Reset modal when opening for new product
+var originalOpenModal = typeof openModal === 'function' ? openModal : null;
+
+function openProductModal() {
+    document.getElementById('productAction').value = 'add_product';
+    document.getElementById('productId').value = '';
+    document.getElementById('productForm').reset();
+    document.getElementById('productModalTitle').textContent = '➕ Add Product';
+    removeImage();
+    openModal('productModal');
+}
 </script>
 
 </body>
