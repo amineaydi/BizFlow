@@ -325,4 +325,64 @@ function requirePosLogin() {
     $_SESSION['business_id'] = $_SESSION['pos_business_id'];
     $_SESSION['business_name'] = $_SESSION['pos_business_name'];
 }
+// ============================================================
+// 👥 PERMISSION SYSTEM
+// ============================================================
+
+/**
+ * Check if current user is owner
+ */
+function isOwner() {
+    return ($_SESSION['user_role'] ?? '') === 'owner';
+}
+
+/**
+ * Check if current user is worker/cashier
+ */
+function isWorker() {
+    $role = $_SESSION['user_role'] ?? '';
+    return in_array($role, ['worker', 'cashier']);
+}
+
+/**
+ * Check if current user is manager or owner
+ */
+function isManager() {
+    $role = $_SESSION['user_role'] ?? '';
+    return in_array($role, ['owner', 'manager']);
+}
+
+/**
+ * Check if user can add/edit products
+ * ⚠️ Only workers, NOT owners!
+ */
+function canManageProducts() {
+    $role = $_SESSION['user_role'] ?? '';
+    return in_array($role, ['worker', 'cashier', 'manager']);
+}
+
+/**
+ * Check if user can see reports
+ * Only owners and managers
+ */
+function canSeeReports() {
+    $role = $_SESSION['user_role'] ?? '';
+    return in_array($role, ['owner', 'manager']);
+}
+
+/**
+ * Check if user can manage staff
+ */
+function canManageStaff() {
+    return ($_SESSION['user_role'] ?? '') === 'owner';
+}
+
+/**
+ * Require product management permission
+ */
+function requireProductPermission() {
+    if (!canManageProducts()) {
+        die('❌ Only workers can add/edit products. Please ask your worker to do this.');
+    }
+}
 ?>
