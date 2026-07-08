@@ -1014,7 +1014,7 @@ select.form-select {
             </button>
         </div>
     </div>
-    <a href="receipt.php?id=<?= $sale['id'] ?>" target="_blank" class="btn">
+ 
    
             
             <!-- ===== DASHBOARD TAB ===== -->
