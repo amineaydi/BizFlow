@@ -3153,6 +3153,51 @@ function openProductModal() {
     openModal('productModal');
 }
 </script>
-
+<script>
+// ============================================================
+// 🔒 PERMISSION SYSTEM - Auto Hide Buttons
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    var userRole = '<?= $_SESSION['user_role'] ?? '' ?>';
+    var isOwner = (userRole === 'owner');
+    
+    // If OWNER → hide product management buttons
+    if (isOwner) {
+        console.log('🔒 Owner mode: Hiding product management buttons');
+        
+        // Hide "Add Product" buttons
+        document.querySelectorAll('[onclick*="productModal"]').forEach(function(btn) {
+            // Only hide "Add" buttons, not the modal itself
+            if (btn.textContent.includes('Add') || btn.textContent.includes('➕')) {
+                btn.style.display = 'none';
+            }
+        });
+        
+        // Hide edit product buttons
+        document.querySelectorAll('[onclick*="editProduct"]').forEach(function(btn) {
+            btn.style.display = 'none';
+        });
+        
+        // Hide delete product buttons
+        document.querySelectorAll('[onclick*="deleteProduct"]').forEach(function(btn) {
+            btn.style.display = 'none';
+        });
+        
+        // Hide stock adjust buttons
+        document.querySelectorAll('[onclick*="adjustStock"]').forEach(function(btn) {
+            btn.style.display = 'none';
+        });
+        
+        // Show info message on products page
+        var productsTab = document.getElementById('tab-products');
+        if (productsTab) {
+            var infoMsg = document.createElement('div');
+            infoMsg.style.cssText = 'background:#fef3c7;color:#92400e;padding:15px;border-radius:10px;margin-bottom:20px;font-weight:600;';
+            infoMsg.innerHTML = 'ℹ️ As the owner, product management is done by your workers. You can view products here.';
+            productsTab.insertBefore(infoMsg, productsTab.firstChild);
+        }
+    }
+});
+</script>
 </body>
 </html>
