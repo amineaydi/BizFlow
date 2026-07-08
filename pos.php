@@ -1138,7 +1138,12 @@ function processSale(total, paid, change) {
             closeModal('paymentModal');
             document.getElementById('successAmount').textContent = total.toFixed(2) + ' ' + CURRENCY;
             document.getElementById('successInvoice').textContent = res.invoice_number || '';
-
+        // 🖨️ AUTO-PRINT RECEIPT
+        if (res.sale_id) {
+            window.open('receipt.php?id=' + res.sale_id + '&auto=1', 
+                        'receipt_' + res.sale_id, 
+                        'width=400,height=700,scrollbars=yes');
+}
             if (change > 0) {
                 document.getElementById('successChange').style.display = 'block';
                 document.getElementById('successChangeAmount').textContent = change.toFixed(2) + ' ' + CURRENCY;
