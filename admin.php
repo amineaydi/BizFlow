@@ -1015,44 +1015,7 @@ select.form-select {
         </div>
     </div>
     <a href="receipt.php?id=<?= $sale['id'] ?>" target="_blank" class="btn">
-    🖨️ Print Receipt
-</a>
-    <!-- ===== MAIN ===== -->
-    <div class="main">
-        
-        <div class="topbar">
-            <div class="topbar-left">
-                <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-                <div class="page-title" id="currentTabTitle">📊 Dashboard</div>
-                <div class="live-badge">
-                    <span class="live-dot"></span>
-                    LIVE
-                </div>
-            </div>
-            
-            <div class="topbar-right">
-                <div class="quick-stat">
-                    Today: <strong><?= number_format($todayStats['revenue'], 0) ?> <?= $currency ?></strong>
-                </div>
-                
-                <div class="user-menu">
-                    <div class="user-avatar"><?= strtoupper(substr($_SESSION['admin_user_name'], 0, 1)) ?></div>
-                    <span class="user-name"><?= htmlspecialchars($_SESSION['admin_user_name']) ?></span>
-                </div>
-                
-                <a href="admin_logout.php" class="btn-logout">🚪</a>
-                <?= renderLangSwitcher() ?> 
-            </div>
-        </div>
-        
-        <div class="content">
-           
-            <?php if (isset($_GET['msg'])): ?>
-                <div class="alert success">✅ <?= htmlspecialchars($_GET['msg']) ?></div>
-            <?php endif; ?>
-            <?php if (isset($_GET['err'])): ?>
-                <div class="alert error">❌ <?= htmlspecialchars($_GET['err']) ?></div>
-            <?php endif; ?>
+   
             
             <!-- ===== DASHBOARD TAB ===== -->
             <div class="tab-content active" id="tab-dashboard">
