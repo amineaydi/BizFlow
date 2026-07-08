@@ -129,11 +129,10 @@ if ($action === 'create_sale') {
         ]);
         
         echo json_encode([
-            'success' => true,
-            'sale_id' => $saleId,
-            'invoice_number' => $invoiceNumber,
-            'total' => $total
-        ]);
+    'success' => true, 
+    'invoice_number' => $invoiceNumber,
+    'sale_id' => $saleId  // ← ADD THIS
+]);
         
     } catch (Exception $e) {
         $conn->rollback();
