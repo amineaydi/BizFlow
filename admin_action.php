@@ -2,7 +2,37 @@
 header('Content-Type: text/html; charset=UTF-8');
 session_start();
 require_once 'db.php';
+<?php
+session_start();
+require_once 'db.php';
 
+requireAdminLogin();
+$bid = getBusinessId();
+$uid = getUserId();
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// ============================================================
+// 🔒 CHECK PERMISSIONS
+// ============================================================
+$productActions = ['add_product', 'edit_product', 'delete_product', 'adjust_stock'];
+if (in_array($action, $productActions)) {
+    if (!canManageProducts()) {
+        redirectBack('products', '', '❌ Only workers can manage products. Ask your worker to do this.');
+        exit;
+    }
+}
+
+$staffActions = ['add_user', 'edit_user', 'delete_user', 'reset_pin'];
+if (in_array($action, $staffActions)) {
+    if (!canManageStaff()) {
+        redirectBack('staff', '', '❌ Only owner can manage staff');
+        exit;
+    }
+}
+
+// ============================================================
+// Continue with normal action handling
+// ============================================================
 requireLogin();
 
 $bid = getBusinessId();
