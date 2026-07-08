@@ -1147,6 +1147,12 @@ function processSale(total, paid, change) {
             }
 
             openModal('successModal');
+            // 🖨️ AUTO-PRINT RECEIPT
+if (res.sale_id) {
+    var printWindow = window.open('receipt.php?id=' + res.sale_id + '&auto=1', 
+                                   '_blank', 
+                                   'width=400,height=600');
+}
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         } else {
             showToast('❌ ' + (res.message || LANG.sale_failed), 'error'); // ✅ Use LANG
